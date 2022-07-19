@@ -17,7 +17,7 @@ def load_cat():
     # Cargar datos de módulos PV
     PVtype = pd.read_excel('Catalogo.xlsx',sheet_name='PVModules',header=0,index_col=0)
     # Cargar datos de módulos de Batt
-    Battype = pd.read_excel('Catalogo.xlsx',sheet_name='BattModules',header=0,index_col=0)
+    Battype = pd.read_excel('Catalogo.xlsx',sheet_name='BattModuleS',header=0,index_col=0)
     # Cargar datos de generadores
     Gens = pd.read_excel('Catalogo.xlsx',sheet_name='Generator',header=0,index_col=0)
     # Cargar datos de Convertidores híbridos
@@ -232,7 +232,7 @@ def createfig_heatmap(df, col, fechas, binary, units):
 @st.cache
 def generate_metrics(df, col, units):
     metrics = pd.DataFrame(data={"Valor":[df[col].mean(),df[col].min(),df[col].max()],
-                                         "Unidad": [units,units,units]}, index = ["Media","Mínimo","Máximo"])
+                                         "Unidad": [units,units,units]}, index = ["Media anual","Mínimo anual","Máximo anual"])
     metrics.index.name = "Métrica"
 
     return metrics

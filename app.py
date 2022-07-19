@@ -244,37 +244,37 @@ if menu_select == menu_options[0]:
 
     st.header("Topología de la microrred ⚡")
     
-    options = st.multiselect('¿Qué activos tiene la microrred?',
-            ["Módulos fotovoltaicos","Red",'Generador', 'Sistema de almacenamiento (ESS)', "Aerogenerador"],["Módulos fotovoltaicos",'Sistema de almacenamiento (ESS)'])
+    options = st.multiselect(
+        '¿Qué activos tiene la microrred?',
+        ["Módulos fotovoltaicos","Red",'Generador', 'Sistema de almacenamiento (ESS)',"Aerogenerador"],["Módulos fotovoltaicos",'Sistema de almacenamiento (ESS)'])
 
         #GENERAR diagrama
         
-    fondo=Image.open("Imagenes/"+"fondo.PNG").convert("RGBA")
+    fondo=Image.open("imagenes/"+"fondo.PNG").convert("RGBA")
+
+    img12=Image.open("imagenes/"+"Carga.PNG").convert("RGBA").resize((145, 250))
+    fondo.paste(img12,(635,0),img12)
 
     if 'Red'in options:
-        img=Image.open("Imagenes/"+"Red.PNG").convert("RGBA").resize((170, 200))
-        fondo.paste(img,(620,470),img)
+        img=Image.open("imagenes/"+"Red.PNG").convert("RGBA").resize((170, 280))
+        fondo.paste(img,(630,490),img)
         
     if 'Aerogenerador'in options:
-        img2=Image.open("Imagenes/"+"Aerogenerador.PNG").convert("RGBA").resize((230, 190))
-        fondo.paste(img2,(330,75),img2)
+        img2=Image.open("imagenes/"+"Aerogenerador.PNG").convert("RGBA").resize((220, 200))
+        fondo.paste(img2,(350,75),img2)
         
         
     if 'Módulos fotovoltaicos'in options:
-        img1=Image.open("Imagenes/"+"panel.PNG").convert("RGBA").resize((280, 188))
-        fondo.paste(img1,(270,250),img1)
+        img1=Image.open("imagenes/"+"panel.PNG").convert("RGBA").resize((290, 188))
+        fondo.paste(img1,(260,257),img1)
 
     if 'Generador'in options:
-        img3=Image.open("Imagenes/"+"generador.PNG").convert("RGBA").resize((220, 170))
-        fondo.paste(img3,(795,450),img3)
+        img3=Image.open("imagenes/"+"generador.PNG").convert("RGBA").resize((230, 190))
+        fondo.paste(img3,(795,472),img3)
 
-    if 'Sistema de almacenamiento (ESS)' in options:
-        img4=Image.open("Imagenes/"+"almacenamiento.PNG").convert("RGBA").resize((300, 150))
-        fondo.paste(img4,(867,295),img4)
-
-    
-    img12=Image.open("Imagenes/"+"Carga.PNG").convert("RGBA").resize((145, 230))
-    fondo.paste(img12,(625,0),img12)
+    if 'Sistema de almacenamiento (ESS)'in options:
+        img4=Image.open("imagenes/"+"almacenamiento.PNG").convert("RGBA").resize((300, 150))
+        fondo.paste(img4,(900,310),img4)
         
     st.image(fondo,use_column_width="auto")
 
@@ -436,6 +436,10 @@ if menu_select == menu_options[0]:
 
         st.header("Selección de inversores híbridos :electric_plug:")        
         
+        st.write("En esta sección puedes seleccionar un inversor híbrido de nuestro catálogo o crear uno propio.")
+        
+        st.info("Si vas a crear uno debes conocer todas las especificaciones del producto.")
+        
         data_model["inverters"] = {}
 
         df_grid_CH, gridOptions_CH = interactive_table(ConH)
@@ -459,6 +463,10 @@ if menu_select == menu_options[0]:
         st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
 
         st.header("Selección de los módulos fotovoltaicos :large_blue_diamond:")
+        
+        st.write("En esta sección puedes seleccionar un módulo fotovoltaico de nuestro catálogo o crear uno propio.")
+        
+        st.info("Si vas a crear uno debes conocer todas las especificaciones del producto.")
         
         image_panel = Image.open('Imagenes/Panel.jpeg')
 
@@ -494,6 +502,7 @@ if menu_select == menu_options[0]:
                 data_model["pv_modules"]["Pmpp"].index.name = "Fecha"
                 with st.expander("Desplegar cálculos de los módulos"):
                     
+                    st.write("En esta sección podrás observar la potencia generada por el módulo fotovoltaico seleccionado y su respectiva eficiencia a lo largo del año bajo estudio.")
                     
                     #color = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) for i in range(len(PV_names))]
                     st_echarts(options=createline_echart(data_model["pv_modules"]["Pmpp"].reset_index(), "Fecha", PV_names, PV_names, "Fecha", "kW", [], x_date = True) , height="400px")
@@ -513,6 +522,10 @@ if menu_select == menu_options[0]:
         
         st.header("Selección de los almacenadores :battery:")
         
+        st.write("En esta sección puedes seleccionar un almacenador de nuestro catálogo o crear uno propio.")
+        
+        st.info("Si vas a crear uno debes conocer todas las especificaciones del producto.")
+        
         data_model["batteries"] = {}
 
         df_grid_BT, gridOptions_BT = interactive_table(Battype)
@@ -529,6 +542,11 @@ if menu_select == menu_options[0]:
 
         st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)    
         st.header("Selección de generadores eólicos :wind_chime:")    
+        
+        st.write("En esta sección puedes seleccionar un aerogenerador de nuestro catálogo o crear uno propio.")
+        
+        st.info("Si vas a crear uno debes conocer todas las especificaciones del producto.")
+        
         st.subheader("Catálogo de generadores eólicos")   
     
         
