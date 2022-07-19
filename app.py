@@ -55,6 +55,20 @@ if menu_select == menu_options[0]:
 
         data_model["lat"] = st.number_input("Latitud: ", value= 6.1849)
         data_model["lon"] = st.number_input("Longitud: ", value = -67.4894)
+        
+        try:      
+        
+            lista=[data_model.get("lat"),data_model.get("lon")]
+            from geopy.geocoders import Nominatim 
+            geolocator = Nominatim(user_agent="ubicacion") 
+            location = geolocator.reverse(lista) 
+            components=location.raw
+            #st.write(components)
+            st.write("La ubicación del proyecto es en: " + components['address']['city'] + " , " + components['address']['country']) 
+        
+        except:
+            st.write("La ubicación del proyecto es en: " + components['address']['town'] + " , " + components['address']['country']) 
+
 
 
         #map = folium.Map(location = [data_model["lat"],data_model["lon"]], zoom_start=12)  
