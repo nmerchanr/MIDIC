@@ -475,15 +475,17 @@ def createline_echart(df, x_col, y_col, y_name, xlabel, ylabel, color, x_date = 
 
     return option
 
-def interactive_table(df):
-    df = df.T
-    df.index.name = "Referencia"
-    df.reset_index(inplace=True)
-    df.drop([0] ,axis=0, inplace = True)
+def interactive_table(df, selection = "multiple", cat = True, editable = True):
+    df = df.astype(str)
+    if cat == True:    
+        df = df.T
+        df.index.name = "Referencia"
+        df.reset_index(inplace=True)
+        df.drop([0] ,axis=0, inplace = True)
 
     gb = GridOptionsBuilder.from_dataframe(df)
-    gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc='sum', editable=True)
-    gb.configure_selection("multiple", use_checkbox=True, rowMultiSelectWithClick=True, suppressRowDeselection=True)
+    gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc='sum', editable=editable)
+    gb.configure_selection(selection, use_checkbox=True, rowMultiSelectWithClick=True, suppressRowDeselection=True)
     gb.configure_grid_options(domLayout='normal')
     gridOptions = gb.build()
 

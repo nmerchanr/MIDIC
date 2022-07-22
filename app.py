@@ -3,9 +3,11 @@ import streamlit as st
 # Importación de librerias
 
 from PIL import Image
+import re
 import cloudpickle
 from streamlit_echarts import st_echarts
 import random
+import openpyxl
 from  pyomo import environ as pym
 import pandas as pd 
 import matplotlib.pyplot as plt 
@@ -55,19 +57,26 @@ if menu_select == menu_options[0]:
 
         data_model["lat"] = st.number_input("Latitud: ", value= 6.1849)
         data_model["lon"] = st.number_input("Longitud: ", value = -67.4894)
-        
-        try:      
-        
+              
+        try:
             lista=[data_model.get("lat"),data_model.get("lon")]
             from geopy.geocoders import Nominatim 
             geolocator = Nominatim(user_agent="ubicacion") 
             location = geolocator.reverse(lista) 
-            components=location.raw
-            #st.write(components)
-            st.write("La ubicación del proyecto es en: " + components['address']['city'] + " , " + components['address']['country']) 
-        
+            components=location.raw   
+            if 'city' in components['address'].keys():
+                st.write("La ubicación del proyecto es en: " + components['address']['city'] + " , " + components['address']['country']) 
+            elif 'town' in components['address'].keys():
+                st.write("La ubicación del proyecto es en: " + components['address']['town'] + " , " + components['address']['country'])      
         except:
-            st.write("La ubicación del proyecto es en: " + components['address']['town'] + " , " + components['address']['country']) 
+            components = {}
+            components['address'] = {}
+            components['address']['country'] = "indefinido"
+            
+
+            
+
+        
 
 
 
@@ -79,10 +88,17 @@ if menu_select == menu_options[0]:
 
         st.map(data=pd.DataFrame(data = {'lat':[data_model["lat"]],'lon':[data_model["lon"]]}), zoom=12, use_container_width=True)
 
-        with st.expander("Visualizar datos meteorológicos"):
-            data_model["year"] = st.selectbox("Seleccione un año", [2015,2016,2017,2018,2019,2020], 4)
+        data_model["year"] = st.selectbox("Seleccione un año", [2015,2016,2017,2018,2019,2020], 4)
 
+        try:
             df, info = get_data_fromNSRDB(data_model["lat"],data_model["lon"], data_model["year"])
+        except:
+            st.error("No es posible descargar los datos meteorológicos de la ubicacion especificada")
+            st.stop()
+
+        with st.expander("Visualizar datos meteorológicos"):
+            
+                
 
             date_vec = np.vectorize(datetime)
             df_index = date_vec(df.Year.values,df.Month.values,df.Day.values, df.Hour.values, df.Minute.values, tzinfo=None)
@@ -150,12 +166,15 @@ if menu_select == menu_options[0]:
 
         st.subheader("Divisas :currency_exchange:")       
 
-        currency_data = st.selectbox("Divisa de datos de entrada", option_symbols, int(np.where(np.array(option_symbols)=='USD : United States Dollar')[0][0]))[0:3]
-
-        try:      
         
+        try:      
+            currency_data = st.selectbox("Divisa de datos de entrada", option_symbols, int(np.where(np.array(option_symbols)=='USD : United States Dollar')[0][0]))[0:3]
             exchange_data = get_exchangerate(currency_data, "USD")
             data_model["in_data_to_usd"] = exchange_data[currency_data+"_USD"]
+
+            cop_data = get_exchangerate("USD", "COP")
+            data_model["cop_to_usd"] = cop_data["COP_" + currency_data]
+            data_model["usd_to_cop"] = cop_data[currency_data + "_COP"]
 
             if currency_data != "USD": 
                 for i,j in zip(exchange_data.keys(),exchange_data.values()):    
@@ -164,6 +183,7 @@ if menu_select == menu_options[0]:
             st.error("Error con el servidor de divisas. Solo es posible crear el modelo en dolares")
             currency_data = "USD"
             data_model["in_data_to_usd"] = 1
+            
 
         
     st.markdown("""<hr style="height:7px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
@@ -188,6 +208,12 @@ if menu_select == menu_options[0]:
             
             data_model["load"]["value"] = load_profile[lp_col].to_numpy()         
             data_model["load"]["len"] = len(load_profile)
+
+            if st.checkbox("¿Considerar consumo de energía reactiva?"):
+                data_model["load"]["reactive"] = True
+                data_model["load"]["fp"] = st.number_input("Factor de potencia de la carga: ", min_value= 0.00, max_value = 1.00, value = 0.95)
+            else:
+                data_model["load"]["reactive"] = False
 
             with st.expander("Visualizar gráficos y métricas de la carga"):
                 
@@ -296,109 +322,212 @@ if menu_select == menu_options[0]:
 
     if 'Red' in options:
 
+        st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
+
         st.header("Red principal :zap:")
         data_model["grid"]["active"] = True        
 
+        st.subheader("Precios de la red principal :heavy_dollar_sign:")
+
+        if components['address']['country'] == "Colombia":
+            price_input = st.selectbox("Origen de los datos", ["Históricos dados por el usuario", "Históricos de operador de red colombiano"])
+        else:
+            price_input = "Históricos dados por el usuario"
+
+        if price_input == "Históricos dados por el usuario":
+
+            cols = st.columns(2)
+
+            cols[0].subheader("Precio de compra :inbox_tray:")
+            cols[1].subheader("Precio de venta :outbox_tray:")
+
+            purchase_rate_choice = cols[0].radio("Precio de compra a la red", ["Valor constante", "Variable - Serie temporal"])
+            sell_rate_choice = cols[1].radio("Precio de venta a la red", ["Valor constante",  "Variable - Serie temporal"])
+
+                    
+
+            if (purchase_rate_choice == "Variable - Serie temporal") or (sell_rate_choice == "Variable - Serie temporal"):
+                #st.subheader("Carga archivo csv con series temporales de los precios")
+                price_profile_csv = st.file_uploader("Cargar csv con precios en " + currency_data + "/kWh", type = ['csv'], help = "Link de ayuda: " + r"https://plotly.com/python/heatmaps/")
+                if price_profile_csv is not None:
+                    price_profile = pd.read_csv(price_profile_csv)
+
+            
+
+            with cols[0]:               
+                
+                if purchase_rate_choice == "Valor constante":
+                    
+                    Price_Grid = st.number_input("Precio de compra: " + currency_data + "/kWh")
+
+                    data_model["grid"]["buy_price"] = {}
+                    data_model["grid"]["buy_price"]["type"] = "fixed"
+                    data_model["grid"]["buy_price"]["value"] = Price_Grid*data_model["in_data_to_usd"]
+                    data_model["grid"]["buy_price"]["len"] = 0
+
+                elif purchase_rate_choice == "Variable - Serie temporal":
+                    if price_profile_csv is not None:
+                        purchase_rate_col = st.selectbox("Columna que contiene los precios de compra", options=price_profile.columns.to_numpy())
+                        Price_Grid = price_profile.loc[:,[purchase_rate_col]]
+
+                        data_model["grid"]["buy_price"] = {}
+                        data_model["grid"]["buy_price"]["type"] = "variable"
+                        data_model["grid"]["buy_price"]["value"] = Price_Grid[purchase_rate_col].to_numpy()*data_model["in_data_to_usd"]
+                        data_model["grid"]["buy_price"]["len"] = len(Price_Grid)
+
+
+                        with st.expander("Visualizar gráficos. Precio de compra"):
+                            st.subheader("Métricas")                    
+
+                            purchase_rate_metric = generate_metrics(price_profile, purchase_rate_col, currency_data + "/kWh")
+                            st.dataframe(purchase_rate_metric)
+                            
+                            st.subheader("Promedio por hora")
+                            purchase_rate_color = st.color_picker('Color gráfica precio compra', '#00f900')
+                            st.altair_chart(createfig_meanhour(Price_Grid, purchase_rate_col, fechas, purchase_rate_color, currency_data + "/kWh").interactive(),use_container_width=True)
+
+                            st.subheader("Precio de compra por hora y día del año")                    
+                            st.altair_chart(createfig_heatmap(Price_Grid, purchase_rate_col, fechas, False, currency_data + "/kWh").interactive(), use_container_width=True)
+
+                    else: 
+                        st.info("Cargue el archivo un archivo csv con la serie temporal de precios de compra en una de sus columnas.")
+
+            with cols[1]:
+
+                
+                if sell_rate_choice == "Valor constante":
+                    Ppvusd = st.number_input("Precio de venta: " + currency_data + "/kWh")
+                    data_model["grid"]["sell_price"] = {}
+                    data_model["grid"]["sell_price"]["type"] = "fixed"
+                    data_model["grid"]["sell_price"]["value"] = Ppvusd*data_model["in_data_to_usd"]
+                    data_model["grid"]["sell_price"]["len"] = 0
+
+                elif sell_rate_choice == "Variable - Serie temporal":
+                    if price_profile_csv is not None:
+                        sell_rate_col = st.selectbox("Columna que contiene los precios de venta", options=price_profile.columns.to_numpy())
+                        Ppvusd = price_profile.loc[:,[sell_rate_col]]
+
+                        data_model["grid"]["sell_price"] = {}
+                        data_model["grid"]["sell_price"]["type"] = "variable"
+                        data_model["grid"]["sell_price"]["value"] = Ppvusd[sell_rate_col].to_numpy()*data_model["in_data_to_usd"]
+                        data_model["grid"]["sell_price"]["len"] = len(Ppvusd)
+                        
+                        with st.expander("Visualizar gráficos. Precio de venta"):
+                            st.subheader("Métricas")                     
+                                            
+                            sell_rate_metric = generate_metrics(price_profile, sell_rate_col, currency_data + "/kWh")
+                            st.dataframe(sell_rate_metric)
+
+                    
+                            st.subheader("Promedio por hora")
+                            sell_rate_color = st.color_picker('Color gráfica precio venta', '#00f900')
+                            st.altair_chart(createfig_meanhour(Ppvusd, sell_rate_col, fechas, sell_rate_color, currency_data + "/kWh").interactive(),use_container_width=True)
+
+                            st.subheader("Precio de venta por hora y día del año")
+                            st.altair_chart(createfig_heatmap(Ppvusd, sell_rate_col, fechas, False, currency_data + "/kWh").interactive(), use_container_width=True)
+
+                    else: 
+                        st.info("Cargue el archivo un archivo csv con la serie temporal de precios de venta en una de sus columnas.")
+
+        elif price_input == "Históricos de operador de red colombiano":
+
+            OR_df = openpyxl.load_workbook('OR_price.xlsx')
+            OR_indice = pd.read_excel("OR_price.xlsx", header=12, usecols="B:E", sheet_name= "INDICE")
+
+            OR_grid, gridOptions_OR = interactive_table(OR_indice, selection = "single", cat = False, editable = False)
+            update_mode_value = GridUpdateMode.MODEL_CHANGED
+            st.subheader("Operadores de red")
+            st.write("A continuación encontrará el listado de las empresas sobre las cuales puede consultar el costo unitario y la tarifa de prestación del servicio.")
+            grid_response_OR = AgGrid(OR_grid, gridOptions=gridOptions_OR, update_mode=update_mode_value, allow_unsafe_jscode=True, theme= "streamlit", fit_columns_on_grid_load=True)
+            
+            selected_OR = grid_response_OR['selected_rows']
+            if len(selected_OR) > 0:
+                OR_sheet = ""
+                OR_num = list(selected_OR[0].values())[0]
+                for i in OR_df.sheetnames:
+                    n_temp =  re.findall(r'\d+', i)
+                    if len(n_temp) > 0:                    
+                        if OR_num == n_temp[0]:
+                            OR_sheet = i
+
+                price_comp = pd.read_excel("OR_price.xlsx", sheet_name=OR_sheet, usecols="A:K", header=5).dropna()
+                price_user = pd.read_excel("OR_price.xlsx", sheet_name=OR_sheet, usecols="N:U", header=5).dropna()
+                
+                price_user.columns = ["Mes", "Año", "Periodo", "Estrato 1", "Estrato 2", "Estrato 3", "Estrato 4", "Estrato 5 y 6. Ind y Com"] 
+                
+                cols = st.columns(2)
+                
+                with cols[0]:
+                    st.subheader("Precio de compra :inbox_tray:")
+                    purchase_type = st.radio("¿Cómo se constituirá el precio de compra a la red?",["Promedio de los ultimos 12 meses", "Seleccionar precio de un mes específico", "Serie temporal mensual"])
+                    level_price = st.selectbox("Seleccione el estrato o sector",price_user.columns[3:])
+
+                    if purchase_type == "Promedio de los ultimos 12 meses":
+                        AgGrid(price_user, theme='streamlit')
+                        purchase_price = price_user[level_price].mean()
+                        data_model["grid"]["buy_price"] = {}
+                        data_model["grid"]["buy_price"]["type"] = "fixed"
+                        data_model["grid"]["buy_price"]["value"] = purchase_price*data_model["cop_to_usd"]
+                        data_model["grid"]["buy_price"]["len"] = 0
+                                               
+                        st.info(f'Precio promedio ultimos 12 meses para  {level_price}: **{purchase_price:.5f} COP/kWh** o **{data_model["grid"]["buy_price"]["value"]:.5f} USD/kWh**')
+                        
+                    elif purchase_type == "Seleccionar precio de un mes específico":
+
+                        price_grid, gridOptions_price = interactive_table(price_user, selection = "single", cat = False, editable = False)
+                        update_mode_value = GridUpdateMode.MODEL_CHANGED                        
+                        st.write("Seleccione el mes del cual se desea extraer el precio para " + level_price)
+                        grid_response_price = AgGrid(price_grid, gridOptions= gridOptions_price, update_mode=update_mode_value, allow_unsafe_jscode=True, theme= "streamlit")
+                        
+                        if len(grid_response_price['selected_rows']) > 0:
+                            purchase_price = float(grid_response_price['selected_rows'][0][level_price])
+                            
+                            data_model["grid"]["buy_price"] = {}
+                            data_model["grid"]["buy_price"]["type"] = "fixed"
+                            data_model["grid"]["buy_price"]["value"] = purchase_price*data_model["cop_to_usd"]
+                            data_model["grid"]["buy_price"]["len"] = 0
+
+                            st.info(f'Precio seleccionado para {level_price}: **{purchase_price:.5f} COP/kWh** o **{data_model["grid"]["buy_price"]["value"]:.5f} USD/kWh**')
+                            
+
+                    elif purchase_type == "Serie temporal mensual":
+                        
+                        mes = fechas.month
+                        purchase_price = np.zeros_like(mes)
+                        AgGrid(price_user, theme='streamlit')
+                        for i in mes:
+                            purchase_price = np.where(mes == i, price_user[level_price].iloc[i-1], purchase_price)
+
+                        data_model["grid"]["buy_price"] = {}
+                        data_model["grid"]["buy_price"]["type"] = "fixed"
+                        data_model["grid"]["buy_price"]["value"] = purchase_price*data_model["cop_to_usd"]
+                        data_model["grid"]["buy_price"]["len"] = 0
+
+                        st.subheader("Precio de compra por hora y día del año")                    
+                        st.altair_chart(createfig_heatmap(pd.DataFrame(data = {'Price': purchase_price}), 'Price', fechas, False, "COP/kWh").interactive(), use_container_width=True)
+                        
+                with cols[1]:
+                    st.subheader("Precio de venta :outbox_tray:")
+
+            if data_model["load"]["reactive"]:
+                
+                st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
+                if st.checkbox("¿Aplicar penalización por exceso de consumo de reactivos según la resolucion CREG 015 del 2018?"):
+                    st.info("Se seleccionó previamente el OR **" + OR_sheet + "**")
+
+        st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
+
+        st.subheader("Límites de la red :no_entry:")
+
         cols = st.columns(2)
-
-        purchase_rate_choice = cols[0].radio("Precio de compra a la red", ["Precio operador de red colombiano", "Valor constante", "Variable - Serie temporal"])
-        sell_rate_choice = cols[1].radio("Precio de venta a la red", ["Precio operador de red colombiano", "Valor constante",  "Variable - Serie temporal"])
-
         MaxPGrid = cols[0].number_input("Potencia máxima de compra (kW)", min_value = 0, value = 50)
-        
         data_model["grid"]["pmax_buy"] = MaxPGrid
         
         MaxPpvG = cols[1].number_input("Porcentaje de potencia máxima para venta (%)", min_value = 0, max_value = 100, value = 20)*MaxPGrid/100
-        
-        
         data_model["grid"]["pmax_sell"] = MaxPpvG
 
-        st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
-        
-        if (purchase_rate_choice == "Variable - Serie temporal") or (sell_rate_choice == "Variable - Serie temporal"):
-            st.subheader("Carga archivo csv con series temporales de los precios")
-            price_profile_csv = st.file_uploader("Cargar csv con precios en " + currency_data + "/kWh", type = ['csv'], help = "Link de ayuda: " + r"https://plotly.com/python/heatmaps/")
-            if price_profile_csv is not None:
-                price_profile = pd.read_csv(price_profile_csv)
 
-        cols = st.columns(2)
-
-        with cols[0]:
-            st.subheader("Precio de compra :heavy_dollar_sign:")
-            if purchase_rate_choice == "Valor constante":
-                
-                Price_Grid = st.number_input("Precio de compra: " + currency_data + "/kWh")
-
-                data_model["grid"]["buy_price"] = {}
-                data_model["grid"]["buy_price"]["type"] = "fixed"
-                data_model["grid"]["buy_price"]["value"] = Price_Grid*data_model["in_data_to_usd"]
-                data_model["grid"]["buy_price"]["len"] = 0
-
-            elif purchase_rate_choice == "Variable - Serie temporal":
-                if price_profile_csv is not None:
-                    purchase_rate_col = st.selectbox("Columna que contiene los precios de compra", options=price_profile.columns.to_numpy())
-                    Price_Grid = price_profile.loc[:,[purchase_rate_col]]
-
-                    data_model["grid"]["buy_price"] = {}
-                    data_model["grid"]["buy_price"]["type"] = "variable"
-                    data_model["grid"]["buy_price"]["value"] = Price_Grid[purchase_rate_col].to_numpy()*data_model["in_data_to_usd"]
-                    data_model["grid"]["buy_price"]["len"] = len(Price_Grid)
-
-
-                    with st.expander("Visualizar gráficos. Precio de compra"):
-                        st.subheader("Métricas")                    
-
-                        purchase_rate_metric = generate_metrics(price_profile, purchase_rate_col, currency_data + "/kWh")
-                        st.dataframe(purchase_rate_metric)
-                        
-                        st.subheader("Promedio por hora")
-                        purchase_rate_color = st.color_picker('Color gráfica precio compra', '#00f900')
-                        st.altair_chart(createfig_meanhour(Price_Grid, purchase_rate_col, fechas, purchase_rate_color, currency_data + "/kWh").interactive(),use_container_width=True)
-
-                        st.subheader("Precio de compra por hora y día del año")                    
-                        st.altair_chart(createfig_heatmap(Price_Grid, purchase_rate_col, fechas, False, currency_data + "/kWh").interactive(), use_container_width=True)
-
-                else: 
-                    st.info("Cargue el archivo un archivo csv con la serie temporal de precios de compra en una de sus columnas.")
-
-        with cols[1]:
-
-            st.subheader("Precio de venta :heavy_dollar_sign:")
-            if sell_rate_choice == "Valor constante":
-                Ppvusd = st.number_input("Precio de venta: " + currency_data + "/kWh")
-                data_model["grid"]["sell_price"] = {}
-                data_model["grid"]["sell_price"]["type"] = "fixed"
-                data_model["grid"]["sell_price"]["value"] = Ppvusd*data_model["in_data_to_usd"]
-                data_model["grid"]["sell_price"]["len"] = 0
-
-            elif sell_rate_choice == "Variable - Serie temporal":
-                if price_profile_csv is not None:
-                    sell_rate_col = st.selectbox("Columna que contiene los precios de venta", options=price_profile.columns.to_numpy())
-                    Ppvusd = price_profile.loc[:,[sell_rate_col]]
-
-                    data_model["grid"]["sell_price"] = {}
-                    data_model["grid"]["sell_price"]["type"] = "variable"
-                    data_model["grid"]["sell_price"]["value"] = Ppvusd[sell_rate_col].to_numpy()*data_model["in_data_to_usd"]
-                    data_model["grid"]["sell_price"]["len"] = len(Ppvusd)
-                    
-                    with st.expander("Visualizar gráficos. Precio de venta"):
-                        st.subheader("Métricas")                     
-                                        
-                        sell_rate_metric = generate_metrics(price_profile, sell_rate_col, currency_data + "/kWh")
-                        st.dataframe(sell_rate_metric)
-
-                
-                        st.subheader("Promedio por hora")
-                        sell_rate_color = st.color_picker('Color gráfica precio venta', '#00f900')
-                        st.altair_chart(createfig_meanhour(Ppvusd, sell_rate_col, fechas, sell_rate_color, currency_data + "/kWh").interactive(),use_container_width=True)
-
-                        st.subheader("Precio de venta por hora y día del año")
-                        st.altair_chart(createfig_heatmap(Ppvusd, sell_rate_col, fechas, False, currency_data + "/kWh").interactive(), use_container_width=True)
-
-                else: 
-                    st.info("Cargue el archivo un archivo csv con la serie temporal de precios de venta en una de sus columnas.")
-
-        st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
+        st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
 
         st.subheader("Disponibilidad de la red :white_check_mark:")
 
