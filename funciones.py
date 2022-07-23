@@ -11,6 +11,26 @@ from numpy import sin
 import collections
 import cloudpickle
 from st_aggrid import GridOptionsBuilder
+from numpy import random
+import math
+
+@st.cache
+def perfil_indisponibilidad(SAIDI,SAIFI,tamano):
+    perfil= np.ones(tamano)
+    Grid_dis=random.choice([0, 1], size=(tamano))
+    
+    if SAIDI/SAIFI <1.5:
+        for i in range(0,tamano):
+            list = perfil.tolist()
+            a=list.count(0)
+            if a<math.ceil(SAIFI) and perfil[i-1]!=0 and perfil[i+1]!=0:
+             perfil[i] = Grid_dis[i]
+            else:
+             perfil[i] = 1
+    else: 
+        perfil[i] = Grid_dis[i]
+    return perfil
+
 
 @st.cache
 def load_cat():

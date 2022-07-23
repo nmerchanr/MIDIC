@@ -22,7 +22,7 @@ from st_aggrid import AgGrid, GridUpdateMode
 
 from models.model import create_model
 from funciones import load_cat, get_data_fromNSRDB, power_PV_calculation, extract_tem_min, get_symbols, get_exchangerate, Grafica_panel, createfig_meanhour, createfig_heatmap
-from funciones import generate_metrics, generate_metrics_av, calculate_WT_power, read_model, results_num_equipment, results_economic, createline_echart, interactive_table, extract_table
+from funciones import generate_metrics, generate_metrics_av, calculate_WT_power, read_model, results_num_equipment, results_economic, createline_echart, interactive_table, extract_table, perfil_indisponibilidad
 
 # Título y configuración de página
 st.set_page_config(page_title="MIDOTIC", page_icon=":battery:", layout="wide", initial_sidebar_state="auto", menu_items=None)
@@ -638,7 +638,7 @@ if menu_select == menu_options[0]:
 
         data_model["grid"]["av"] = {}
 
-        av_choice = st.radio("Ingresar perfil de disponobilidad:", ["No", "Si"])
+        av_choice = st.radio("Ingresar perfil de disponibilidad:", ["No", "Si"])
         
         if av_choice == "Si":        
 
@@ -666,7 +666,30 @@ if menu_select == menu_options[0]:
 
             else: 
                 data_model["grid"]["av"]["active"] = False
+        
+        elif av_choice == "No" and price_input == "Históricos dados por el usuario":
 
+            data_model["grid"]["av"]["active"] = False
+            
+        elif av_choice == "No" and selected_OR[0]["Empresa"]== "ENEL COLOMBIA S.A. E.S.P." and price_input == "Históricos de operador de red colombiano":
+            
+            SAIDI=9.283
+            SAIDI_minuto=487
+            SAIFI=8.1
+            
+            st.success( "Usted eligió el operador de red " +  selected_OR[0]["Empresa"] + " se creará un perfil teniendo en cuenta que el SAIDI reportado por la empresa es de: "+ str(SAIDI_minuto)+ " minutos y el SAIFI es de: " + str(SAIFI))
+
+            data_model["grid"]["av"]["active"] = perfil_indisponibilidad(SAIDI,SAIFI,8760)
+            
+        elif av_choice == "No" and selected_OR[0]["Empresa"]== "AIR-E S.A.S. E.S.P." and price_input == "Históricos de operador de red colombiano": 
+            
+            SAIDI=56.34
+            SAIFI=67.33
+            
+            st.success( "Usted eligió el operador de red " +  selected_OR[0]["Empresa"] + " se creará un perfil teniendo en cuenta que el SAIDI reportado por la empresa es de: "+ str(SAIDI)+ " horas y el SAIFI es de: " + str(SAIFI))
+
+            data_model["grid"]["av"]["active"] = perfil_indisponibilidad(SAIDI,SAIFI,8760)
+            
         elif av_choice == "No":
 
             data_model["grid"]["av"]["active"] = False
@@ -852,7 +875,7 @@ if menu_select == menu_options[0]:
         data_model["generator"]["pmax"] = st.number_input("Potencia maxima: kW", min_value=0.0, max_value=None, value = 10.0)
         data_model["generator"]["fmin"] = st.number_input("Consumo de combustible a potencia 0: L/h", min_value=0.0, max_value=None, value = 1.0)
         data_model["generator"]["fmax"] = st.number_input("Consumo de combustible a máxima potencia: L/h", min_value=0.0, max_value=None, value = 18.0)
-        data_model["generator"]["fuel_cost"] = st.number_input("Costo del litro de combustible: " + currency_data + "/L", min_value=0.0, max_value=None, step = 0.1, value = 0.5934)*data_model["in_data_to_usd"]
+        data_model["generator"]["nvioel_cost"] = st.number_input("Costo del litro de combustible: " + currency_data + "/L", min_value=0.0, max_value=None, step = 0.1, value = 0.5934)*data_model["in_data_to_usd"]
         data_model["generator"]["gen_cost"] = st.number_input("Costo de instalación: " + currency_data, min_value=0.0, max_value=None, step = 1.0, value = 0.0)*data_model["in_data_to_usd"]
         data_model["generator"]["gen_OM_cost"] = st.number_input("Costo de OM: " + currency_data + "/h", min_value=0.0, max_value=None, step = 1.0, value = 1.0)*data_model["in_data_to_usd"]          
         data_model["generator"]["min_p_load"] = st.number_input("Porcentaje de carga mínimo para funcionar: (%)", min_value=0, max_value=None, value = 10)
@@ -862,7 +885,7 @@ if menu_select == menu_options[0]:
 
         data_model["generator"]["av"] = {}
 
-        av_gen_choice = st.radio("Ingresar perfil de disponobilidad del generador:", ["No", "Si"])
+        av_gen_choice = st.radio("Ingresar perfil de disponibilidad del generador:", ["No", "Si"])
         
         if av_gen_choice == "Si":        
 
@@ -923,7 +946,7 @@ if menu_select == menu_options[0]:
 
         st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
 
-        bono_bool = st.checkbox("Incentivo por bono de disminuciones de dioxido de carbono")
+        bono_bool = st.checkbox("Incentivo por bono de disminuciones de dióxido de carbono")
         if bono_bool:
             data_model["environment"] = {}
             data_model["environment"]["active"] = True
