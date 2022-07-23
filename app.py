@@ -31,6 +31,7 @@ st.markdown("""<hr style="height:7px;border-radius:5px;color:#333;background-col
 
 data_model = {}
 
+
 symbols = get_symbols()
 option_symbols = []
 for i,j in zip(symbols['symbols'].keys(), symbols['symbols'].values()):
@@ -72,83 +73,66 @@ if menu_select == menu_options[0]:
             components = {}
             components['address'] = {}
             components['address']['country'] = "indefinido"
-            
-
-            
-
         
-
-
-
-        #map = folium.Map(location = [data_model["lat"],data_model["lon"]], zoom_start=12)  
-        #tooltip = 'Click Info!'
-        #folium.Marker(location=[data_model["lat"],data_model["lon"]], popup="Ubicación seleccionada", tooltip=tooltip,icon=folium.Icon(color="red",icon='hamburger',prefix='fa')).add_to(map)
-
-        #folium_static(map)  
 
         st.map(data=pd.DataFrame(data = {'lat':[data_model["lat"]],'lon':[data_model["lon"]]}), zoom=12, use_container_width=True)
 
-        data_model["year"] = st.selectbox("Seleccione un año", [2015,2016,2017,2018,2019,2020], 4)
+       
+
+    with st.expander("Visualizar datos meteorológicos"):
+        
+        data_model["year"] = st.selectbox("Seleccione el año de consulta de los datos meteorológicos", [2015,2016,2017,2018,2019,2020], 4)
 
         try:
             df, info = get_data_fromNSRDB(data_model["lat"],data_model["lon"], data_model["year"])
         except:
             st.error("No es posible descargar los datos meteorológicos de la ubicacion especificada")
             st.stop()
-
-        with st.expander("Visualizar datos meteorológicos"):
-            
-                
-
-            date_vec = np.vectorize(datetime)
-            df_index = date_vec(df.Year.values,df.Month.values,df.Day.values, df.Hour.values, df.Minute.values, tzinfo=None)
-            df.index = df_index
-
-            df_meteo = pd.DataFrame(data={'Irra_year':df.GHI.values, 'Temperatura':df.Temperature.values, 'vel (m/s)':df['Wind Speed'].values}, index=df_index)
-            df_meteo.index.name = 'Fecha'
-            
-            st.metric("Zona horaria", "GTM" + str(info['Time Zone'].iloc[0]))
-
-            st.metric("Elevación", str(info['Elevation'].iloc[0]) + " msnm")
-
-            st.markdown("""<hr style="height:5px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
-
-            st.subheader("Seleccione el rango de fechas a visualizar :date:")
-
-            fecha_iD = st.date_input("Fecha de inicio:", df_meteo.index[0])    
-            fecha_fD = st.date_input("Fecha de fin:", df_meteo.index[-1])
-            
-            st.markdown("""<hr style="border:2px dashed IndianRed;border-radius:5px;" /> """, unsafe_allow_html=True)
-
-            Graf_irr = df_meteo.loc[:,['Irra_year']]
-            Graf_irr = Graf_irr.reset_index()
-            st.subheader("Perfil de irradiancia en el año " + str(data_model["year"]) + ":sunny:")
-            st_echarts(options=createline_echart(Graf_irr, "Fecha", ["Irra_year"], ["Irradiancia"], "Fecha", "W/m^2", "#E6B020", x_date = True) , height="400px")
         
+            
 
-            Irr_metric = generate_metrics(df_meteo, 'Irra_year', "W/m^2")
-            st.table(Irr_metric.iloc[[0,2],:])
+        date_vec = np.vectorize(datetime)
+        df_index = date_vec(df.Year.values,df.Month.values,df.Day.values, df.Hour.values, df.Minute.values, tzinfo=None)
+        df.index = df_index
+
+        df_meteo = pd.DataFrame(data={'Irra_year':df.GHI.values, 'Temperatura':df.Temperature.values, 'vel (m/s)':df['Wind Speed'].values}, index=df_index)
+        df_meteo.index.name = 'Fecha'
+        
+        st.metric("Zona horaria", "GTM" + str(info['Time Zone'].iloc[0]))
+
+        st.metric("Elevación", str(info['Elevation'].iloc[0]) + " msnm")
+
+        st.markdown("""<hr style="height:5px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+
+        Graf_irr = df_meteo.loc[:,['Irra_year']]
+        Graf_irr = Graf_irr.reset_index()
+        st.subheader("Perfil de irradiancia en el año " + str(data_model["year"]) + ":sunny:")
+        st_echarts(options=createline_echart(Graf_irr, "Fecha", ["Irra_year"], ["Irradiancia"], "Fecha", "W/m^2", "#E6B020", x_date = True) , height="400px")
+    
+
+        Irr_metric = generate_metrics(df_meteo, 'Irra_year', "W/m^2")
+        st.table(Irr_metric.iloc[[0,2],:])
 
 
-            st.markdown("""<hr style="border:2px dashed IndianRed;border-radius:5px;" /> """, unsafe_allow_html=True)
+        st.markdown("""<hr style="border:2px dashed IndianRed;border-radius:5px;" /> """, unsafe_allow_html=True)
 
-            Graf_tem = df_meteo.loc[:,['Temperatura']]
-            Graf_tem = Graf_tem.reset_index()
-            st.subheader("Perfil de Temperatura en el año " + str(data_model["year"]) + ":hotsprings:")
-            st_echarts(options=createline_echart(Graf_tem, "Fecha", ["Temperatura"], ["Temperatura"], "Fecha", "°C", "#EF8268", x_date = True) , height="400px")
+        Graf_tem = df_meteo.loc[:,['Temperatura']]
+        Graf_tem = Graf_tem.reset_index()
+        st.subheader("Perfil de Temperatura en el año " + str(data_model["year"]) + ":hotsprings:")
+        st_echarts(options=createline_echart(Graf_tem, "Fecha", ["Temperatura"], ["Temperatura"], "Fecha", "°C", "#EF8268", x_date = True) , height="400px")
 
-            Tem_metric = generate_metrics(df_meteo, 'Temperatura', "°C")
-            st.table(Tem_metric)
+        Tem_metric = generate_metrics(df_meteo, 'Temperatura', "°C")
+        st.table(Tem_metric)
 
-            st.markdown("""<hr style="border:2px dashed IndianRed;border-radius:5px;" /> """, unsafe_allow_html=True)
+        st.markdown("""<hr style="border:2px dashed IndianRed;border-radius:5px;" /> """, unsafe_allow_html=True)
 
-            Graf_vel = df_meteo.loc[:,['vel (m/s)']]
-            Graf_vel = Graf_vel.reset_index()
-            st.subheader("Perfil de velocidad del viento en el año " + str(data_model["year"]) + ":cyclone:")
-            st_echarts(options=createline_echart(Graf_vel, "Fecha", ["vel (m/s)"], ["Velocidad"], "Fecha", "m/s", "#21AEF0", x_date = True) , height="400px")
+        Graf_vel = df_meteo.loc[:,['vel (m/s)']]
+        Graf_vel = Graf_vel.reset_index()
+        st.subheader("Perfil de velocidad del viento en el año " + str(data_model["year"]) + ":cyclone:")
+        st_echarts(options=createline_echart(Graf_vel, "Fecha", ["vel (m/s)"], ["Velocidad"], "Fecha", "m/s", "#21AEF0", x_date = True) , height="400px")
 
-            wind_metric = generate_metrics(df_meteo, 'vel (m/s)', "m/s")
-            st.table(wind_metric)
+        wind_metric = generate_metrics(df_meteo, 'vel (m/s)', "m/s")
+        st.table(wind_metric)
 
             
             
@@ -212,19 +196,28 @@ if menu_select == menu_options[0]:
             if st.checkbox("¿Considerar consumo de energía reactiva?"):
                 data_model["load"]["reactive"] = True
                 data_model["load"]["fp"] = st.number_input("Factor de potencia de la carga: ", min_value= 0.00, max_value = 1.00, value = 0.95)
+                data_model["load"]["reactive_value"] = np.round(data_model["load"]["value"]*np.tan(np.arccos(data_model["load"]["fp"])), 5)
             else:
                 data_model["load"]["reactive"] = False
 
+
             with st.expander("Visualizar gráficos y métricas de la carga"):
                 
+                st.subheader("Métricas de demanda de potencia activa")
                 load_metric = generate_metrics(load_profile, lp_col, "kW")
                 st.dataframe(load_metric)
 
+                st.subheader("Media horaria. Demanda de potencia activa")
                 lp_color = st.color_picker('Color gráfica', '#00f900')
                 st.altair_chart(createfig_meanhour(load_profile, lp_col, fechas, lp_color, "kW"),use_container_width=True)
 
-                st.subheader("Mapa del perfil de carga anual")
+                st.subheader("Mapa anual del perfil de demanda de potencia activa")
                 st.altair_chart(createfig_heatmap(load_profile, lp_col, fechas, False, "kW"),use_container_width=True)
+
+                if data_model["load"]["reactive"]:
+                    st.subheader("Perfil de demanda de potencia activa y reactiva")
+                    st_echarts(options=createline_echart(pd.DataFrame({'Fecha':fechas, 'Activa':data_model["load"]["value"],'Reactiva': data_model["load"]["reactive_value"]}), 
+                                                        "Fecha", ['Activa','Reactiva'], ['Activa','Reactiva'], "Fecha", "kW - kVAr", [], x_date = True) , height="400px")
 
     with cols_gen[1]:
 
@@ -450,11 +443,12 @@ if menu_select == menu_options[0]:
                         if OR_num == n_temp[0]:
                             OR_sheet = i
 
-                price_comp = pd.read_excel("OR_price.xlsx", sheet_name=OR_sheet, usecols="A:K", header=5).dropna()
+                price_comp = pd.read_excel("OR_price.xlsx", sheet_name=OR_sheet, usecols="A:J", header=5).dropna()
                 price_user = pd.read_excel("OR_price.xlsx", sheet_name=OR_sheet, usecols="N:U", header=5).dropna()
                 
                 price_user.columns = ["Mes", "Año", "Periodo", "Estrato 1", "Estrato 2", "Estrato 3", "Estrato 4", "Estrato 5 y 6. Ind y Com"] 
-                
+                price_comp.columns= ["Mes" ,"Año", "Periodo", "GM", "TM", "PR", "D", "CV", "RM", "CU"]
+
                 cols = st.columns(2)
                 
                 with cols[0]:
@@ -499,32 +493,143 @@ if menu_select == menu_options[0]:
                             purchase_price = np.where(mes == i, price_user[level_price].iloc[i-1], purchase_price)
 
                         data_model["grid"]["buy_price"] = {}
-                        data_model["grid"]["buy_price"]["type"] = "fixed"
+                        data_model["grid"]["buy_price"]["type"] = "variable"
                         data_model["grid"]["buy_price"]["value"] = purchase_price*data_model["cop_to_usd"]
-                        data_model["grid"]["buy_price"]["len"] = 0
+                        data_model["grid"]["buy_price"]["len"] = len(purchase_price)
 
                         st.subheader("Precio de compra por hora y día del año")                    
                         st.altair_chart(createfig_heatmap(pd.DataFrame(data = {'Price': purchase_price}), 'Price', fechas, False, "COP/kWh").interactive(), use_container_width=True)
                         
                 with cols[1]:
                     st.subheader("Precio de venta :outbox_tray:")
+                    st.info("El precio de venta se define como: Ps = CU - CV")
 
+                    sell_type = st.radio("¿Cómo se constituirá el precio de venta a la red?",["Promedio de los ultimos 12 meses", "Seleccionar precio de un mes específico", "Serie temporal mensual"])
+                    
+                    if sell_type == "Promedio de los ultimos 12 meses":
+                        AgGrid(price_comp, theme='streamlit')
+                        
+                        sell_price = (price_comp["CU"] - price_comp["CV"]).mean()
+                        data_model["grid"]["sell_price"] = {}
+                        data_model["grid"]["sell_price"]["type"] = "fixed"
+                        data_model["grid"]["sell_price"]["value"] = sell_price*data_model["cop_to_usd"]
+                        data_model["grid"]["sell_price"]["len"] = 0
+                        
+                        st.info(f'Precio promedio ultimos 12 meses: **{sell_price:.5f} COP/kWh** o **{data_model["grid"]["sell_price"]["value"]:.5f} USD/kWh**')
+                    
+                    elif sell_type == "Seleccionar precio de un mes específico":
+
+                        price_grid_sell, gridOptions_price_sell = interactive_table(price_comp, selection = "single", cat = False, editable = False)
+                        update_mode_value = GridUpdateMode.MODEL_CHANGED                        
+                        st.write("Seleccione el mes del cual se desea extraer el precio de venta  de las componentes CU y CV")
+                        grid_response_price_sell = AgGrid(price_grid_sell, gridOptions= gridOptions_price_sell, update_mode=update_mode_value, allow_unsafe_jscode=True, theme= "streamlit")
+                        
+                        if len(grid_response_price_sell['selected_rows']) > 0:
+                            sell_price = float(grid_response_price_sell['selected_rows'][0]["CU"]) - float(grid_response_price_sell['selected_rows'][0]["CV"])
+                            
+                            data_model["grid"]["sell_price"] = {}
+                            data_model["grid"]["sell_price"]["type"] = "fixed"
+                            data_model["grid"]["sell_price"]["value"] = sell_price*data_model["cop_to_usd"]
+                            data_model["grid"]["sell_price"]["len"] = 0
+
+                            st.info(f'Precio seleccionado: **{sell_price:.5f} COP/kWh** o **{data_model["grid"]["sell_price"]["value"]:.5f} USD/kWh**')
+
+                    elif sell_type == "Serie temporal mensual":
+                        
+                        mes = fechas.month
+                        sell_price = np.zeros_like(mes)
+                        AgGrid(price_comp, theme='streamlit')
+                        for i in mes:
+                            sell_price = np.where(mes == i, price_comp["CU"].iloc[i-1] - price_comp["CV"].iloc[i-1], sell_price)
+
+                        data_model["grid"]["sell_price"] = {}
+                        data_model["grid"]["sell_price"]["type"] = "variable"
+                        data_model["grid"]["sell_price"]["value"] = sell_price*data_model["cop_to_usd"]
+                        data_model["grid"]["sell_price"]["len"] = len(sell_price)
+
+                        st.subheader("Precio de venta por hora y día del año")                    
+                        st.altair_chart(createfig_heatmap(pd.DataFrame(data = {'Price': sell_price}), 'Price', fechas, False, "COP/kWh").interactive(), use_container_width=True)
+                        
+         
+    
+
+
+        if load_profile_csv is not None:
             if data_model["load"]["reactive"]:
                 
                 st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
-                if st.checkbox("¿Aplicar penalización por exceso de consumo de reactivos según la resolucion CREG 015 del 2018?"):
-                    st.info("Se seleccionó previamente el OR **" + OR_sheet + "**")
+                st.header("Penalización por exceso de reactivos")
+                if price_input == "Históricos de operador de red colombiano":
+                    rec_sel = st.radio("Aplicar penalización por exceso de consumo de reactivos según: ", ["Resolución CREG 015 del 2018", "Parámetros del usuario"])
+                else:
+                    rec_sel = "Parámetros del usuario"
+
+                if rec_sel == "Resolución CREG 015 del 2018":
+                    if len(selected_OR) > 0:
+                        st.subheader("Componente D (distribución) de " + selected_OR[0]["Empresa"] + " durante los últimos 12 meses")
+                        st_echarts(options=createline_echart(price_comp, "Mes", "D", ["Componente D"], "Periodo", "COP/kWh", [], x_date = False, x_type = "category", data_zoom = False) , height="400px")
+                        st.info("Esta serie será el costo utilizado mes a mes para penalizar los excedentes consumo de reactiva horarios mayores al 50% del consumo de potencia activa demandada de la red. Así mismo, será la penalización para las exportaciones de energía capacitiva por parte de la microrred a la red principal (Resolución CREG 015 del 2018. Capítulo 12).")
+                        
+                        mes = fechas.month
+                        q_price = np.zeros_like(mes)
+                        for i in mes:
+                            q_price = np.where(mes == i, price_comp["D"].iloc[i-1], q_price)
+                        
+                        data_model["grid"]["q_price"] = {}
+                        data_model["grid"]["q_price"]["type"] = "variable"
+                        data_model["grid"]["q_price"]["value"] = q_price*data_model["cop_to_usd"]
+                        data_model["grid"]["q_price"]["len"] = len(q_price)
+                        data_model["grid"]["lim_q"] = 0.5 
+                        st.subheader("Costo de penalización por exceso de reactivos. Gráfico por hora y día del año")                    
+                        st.altair_chart(createfig_heatmap(pd.DataFrame(data = {'Price': q_price}), 'Price', fechas, False, "COP/kWh").interactive(), use_container_width=True)
+
+                    else:
+                        st.warning("Seleccione un operador de red en la sección de precios para continuar")
+                elif rec_sel == "Parámetros del usuario":
+                    cols = st.columns(2)
+                    with cols[0]:
+                        q_price = st.number_input("Costo de penalización por exceso de reactivos: " + currency_data + "/kWh")
+                        data_model["grid"]["q_price"] = {}
+                        data_model["grid"]["q_price"]["type"] = "fixed"
+                        data_model["grid"]["q_price"]["value"] = q_price*data_model["in_data_to_usd"]
+                        data_model["grid"]["q_price"]["len"] = 0
+                    with cols[1]:
+                        data_model["grid"]["lim_q"] = st.number_input("Porcentaje máximo de potencia activa horaria para uso de reactivos horarios sin penalización (%)", min_value=0.0, max_value=100.0, value = 50.0)/100
+                    
 
         st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
 
         st.subheader("Límites de la red :no_entry:")
 
         cols = st.columns(2)
-        MaxPGrid = cols[0].number_input("Potencia máxima de compra (kW)", min_value = 0, value = 50)
-        data_model["grid"]["pmax_buy"] = MaxPGrid
-        
-        MaxPpvG = cols[1].number_input("Porcentaje de potencia máxima para venta (%)", min_value = 0, max_value = 100, value = 20)*MaxPGrid/100
-        data_model["grid"]["pmax_sell"] = MaxPpvG
+        with cols[0]:
+            st.subheader("Potencia máxima de demanda de la red")
+            data_model["grid"]["pmax_buy"] = st.number_input("Potencia máxima del transformador o acometida (kW)", min_value = 0, value = 50)            
+        with cols[1]:  
+            st.subheader("Potencia máxima de inyección a la red")      
+            if components["address"]["country"] == "Colombia":
+                ms_sel = st.radio("Potencia máxima de inyección a la red dada por: ", ["Resolución CREG 174 de 2021", "Usuario"])
+            else: 
+                ms_sel = "Usuario"
+            
+            if ms_sel == "Resolución CREG 174 de 2021":
+                sys_type = st.selectbox("El sistema está conectado al transformador de distribucion : ", ["Independiente", "Con otros usuarios"])
+                if sys_type == "Independiente":                
+                    if load_profile_csv is not None:
+                        min_load_mean = np.round(np.mean([np.min(data_model["load"]["value"][i:i+24]) for i in np.arange(0,len(data_model["load"]["value"]), 24)]), 4)
+
+                        if min_load_mean > data_model["grid"]["pmax_buy"]*0.5:
+                            st.info("Según el perfil de demanda de potencia activa ingresado, el promedio de potencia de las horas con minima demanda diaria es de: **" + str(min_load_mean) + "kW** el cual es mayor al 50% de la potencia maxima de compra de la red. Por tanto, el límite de inyecciones de potencia a la red será **el 50% de la potencia maxima de compra de la red**")
+                            data_model["grid"]["pmax_sell"] = data_model["grid"]["pmax_buy"]*0.5
+                        else:
+                            st.info("Según el perfil de demanda de potencia activa ingresado, el promedio de potencia de las horas con minima demanda diaria es de: **" + str(min_load_mean) + "kW** el cual es menor al 50% de la potencia maxima de compra de la red. Por tanto, el límite de inyecciones de potencia a la red será **el promedio de potencia de las horas con minima demanda diaria**")
+                            data_model["grid"]["pmax_sell"] = min_load_mean
+                elif sys_type == "Con otros usuarios": 
+                    data_model["grid"]["pmax_sell"] = st.number_input("Potencia máxima de inyección a la red según estudio de conexión (kW)", value = 0.5*data_model["grid"]["pmax_buy"])
+            elif ms_sel == "Usuario":
+                data_model["grid"]["pmax_sell"] = st.number_input("Potencia máxima de inyección a la red según estudio de conexión (kW)", value = 0.5*data_model["grid"]["pmax_buy"])
+
+        #data_model["grid"]["pmax_sell"] = MaxPpvG
 
 
         st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
@@ -592,7 +697,11 @@ if menu_select == menu_options[0]:
 
         if len(grid_response_CH['selected_rows']) > 0:
             data_model["inverters"]["type"] = extract_table(ConH, grid_response_CH)
+        if load_profile_csv is not None:
+            if data_model["load"]["reactive"]:
+                data_model["inverters"]["fp_set"] = st.number_input("Factor de potencia minimo del inversor", min_value=0.0, max_value=1.0, value = 0.85)
 
+        
         inv_flex = st.radio("La microrred se puede componer por:", ["Una sola tecnología de inversor", "Varias tecnolgías de inversor"])
         if inv_flex == "Varias tecnolgías de inversor":
             data_model["inverters"]["flex"] = True
@@ -648,16 +757,19 @@ if menu_select == menu_options[0]:
                     st.write("En esta sección podrás observar la potencia generada por el módulo fotovoltaico seleccionado y su respectiva eficiencia a lo largo del año bajo estudio.")
                     
                     #color = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) for i in range(len(PV_names))]
-                    st_echarts(options=createline_echart(data_model["pv_modules"]["Pmpp"].reset_index(), "Fecha", PV_names, PV_names, "Fecha", "kW", [], x_date = True) , height="400px")
+                    Pmpp_graf = data_model["pv_modules"]["Pmpp"].copy()
+                    Pmpp_graf["Fecha"] = fechas 
+                    st_echarts(options=createline_echart(Pmpp_graf.copy(), "Fecha", PV_names, PV_names, "Fecha", "kW", [], x_date = True) , height="400px")
 
                     n =  data_model["pv_modules"]["Pmpp"].copy()         
+                    n = n.reset_index()
                     for k in PV_names:
                         
                         a = data_model["pv_modules"]["Pmpp"][k].to_numpy()
                         b = data_model["pv_modules"]["type"].loc["A",k]*df_irr["IRR"].to_numpy()/1000
                         n[k] = np.divide(a, b, out=np.zeros_like(a), where=b!=0)*100 
                         
-                    st_echarts(options=createline_echart(n.reset_index(), "Fecha", PV_names, PV_names, "Fecha", "%", [], x_date = True) , height="400px")
+                    #st_echarts(options=createline_echart(n.copy(), "Fecha", PV_names, PV_names, "Fecha", "%", [], x_date = True) , height="400px")
                     
     if ('Sistema de almacenamiento (ESS)' in options):
 
@@ -877,8 +989,12 @@ if menu_select == menu_options[0]:
                 else:
                     st.error("Email inválido")
             else:
-                solver = pym.SolverFactory(solver)
-                solver.options['mipgap'] = 1e-2
+                if solver == "gurobi":
+                    solver = pym.SolverFactory(solver)
+                    solver.options['mipgap'] = 1e-2
+                elif solver == "cplex":
+                    solver = pym.SolverFactory(solver)
+                    solver.options['mip_tolerances_mipgap'] = 1e-2
                 with open('test.pkl', mode='rb') as file:
                         model_dict = cloudpickle.load(file)
                         model = model_dict["model"]
@@ -889,7 +1005,7 @@ if menu_select == menu_options[0]:
                     cloudpickle.dump(model_dict, file)
 
                 
-    st.json(data_model)
+    #st.json(data_model)
 
     #st.json(data_model)
 
@@ -965,6 +1081,8 @@ elif menu_select == menu_options[1]:
 
             cols[1].metric("Ahorros anuales en energía", f'{res_ec["Ay"]:.2f} {currency_results}')
 
+            
+
             st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
             
             cols = st.columns(2)
@@ -985,6 +1103,9 @@ elif menu_select == menu_options[1]:
             fig.update_traces(marker_color='rgb(14,110,232)', marker_line_color='rgb(8,48,107)',
                             marker_line_width=1.5, opacity=0.6)
 
+            import numpy_financial as npf
+            st.subheader("Tasa interna de retorno: " + str(np.round(npf.irr(nom_tab["Total"].iloc[:-1].values)*100,2)) + "%")
+            
             st.plotly_chart(fig, use_container_width=True)
 
             st.header("Tabla de amortización VPN")

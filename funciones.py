@@ -243,7 +243,7 @@ def generate_metrics_av(df, col):
     concurrent =  collections.Counter(df[col].to_numpy())
     len_df = len(df)
     metrics = pd.DataFrame(index = ["Disponibilidad", "Indisponibilidad"], data = {"Cantidad de franjas":[concurrent[1],concurrent[0]],
-                                                                                   "Porcentaje de ocurrencia (%)":[np.round(concurrent[1]*100/len_df),np.round(concurrent[0]*100/len_df)]})
+                                                                                   "Porcentaje de ocurrencia (%)":[concurrent[1]*100/len_df,concurrent[0]*100/len_df]})
 
     return metrics
 
@@ -388,6 +388,7 @@ def results_economic(m, data_model):
     data["Ry"] = data["Re"] + data["Renv"]
 
     data["Ay"] = (sum(m.Price_Grid[t]*(sum(m.PBL[tch,tb,t].value for tb in m.BATT for tch in m.CH) + sum(m.ConH['n_dcac',tch]*m.PpvL[tch,t].value for tch in m.CH)) + m.PTL[t].value for t in m.T))*data_model["usd_to_results"]
+    #data["Ay"] = (sum(m.Price_Grid[t]*(sum(m.ConH['n_dcac',tch]*m.PpvL[tch,t].value for tch in m.CH)) + m.PTL[t].value for t in m.T))*data_model["usd_to_results"]
 
     data["Ce"] = (sum(m.Price_Grid[t]*(m.PGL[t].value + sum(m.PGB[tch,tb,t].value for tb in m.BATT for tch in m.CH)) + m.FuelCost*(m.GenFmin*m.GenOn[t].value + m.GenFm*m.PD[t].value) for t in m.T))*data_model["usd_to_results"]
 
@@ -434,14 +435,22 @@ def results_economic(m, data_model):
 
     return data, VPN_cash_flow, Nom_flow
 
-def createline_echart(df, x_col, y_col, y_name, xlabel, ylabel, color, x_date = False):
+def createline_echart(df, x_col, y_col, y_name, xlabel, ylabel, color, x_date = False, x_type = None, data_zoom = True):
     
-    if x_date:
+    if x_type is not None:
+        x_values = df[x_col].tolist()
+        
+    elif x_date:
         x_type = "category"
-        x_values = df[x_col].dt.strftime('%d-%m-%Y %H:%M').tolist()
+        x_values = df[x_col].dt.strftime('%d %b %H:%M').tolist()
     else:
         x_type = "value"
         x_values = list(df[x_col])
+    
+    if data_zoom:
+        dz = [{'type': 'inside', 'start': 0, 'end': 20}, { 'start': 0,'end': 20}]
+    else:
+        dz = []
 
     series = []
 
@@ -461,11 +470,7 @@ def createline_echart(df, x_col, y_col, y_name, xlabel, ylabel, color, x_date = 
                     'name': xlabel,
                     "data": x_values
                 },
-                'dataZoom': [{'type': 'inside', 'start': 0, 'end': 20},
-                            {
-                                'start': 0,
-                                'end': 20
-                            }],
+                'dataZoom': dz,
                 "yAxis": {"type": "value", "name": ylabel},
                 "series": series,
             }

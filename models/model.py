@@ -62,6 +62,8 @@ def create_model(data_model):
             return m.ENS[t] == 0
         model.None_ENS = Constraint(model.T, rule=None_ENS)    
 
+    
+
     ## -- PARÁMETROS Y VARIABLES DE RED PRINCIPAL -- ## 
     model.PGL = Var(model.T, domain=NonNegativeReals)                              # Potencia de la red electrovichada a la carga    
     model.PpvG = Var(model.CH, model.T, domain=NonNegativeReals)                        # Potencia del panel dirigida a la red   
@@ -105,7 +107,7 @@ def create_model(data_model):
         model.None_grid=Constraint(model.T,rule=None_grid)
 
 
-     ## -- PARÁMETROS Y VARIABLES DE TURBINAS EÓLICAS -- ## 
+    ## -- PARÁMETROS Y VARIABLES DE TURBINAS EÓLICAS -- ## 
     if data_model["windgen"]["active"]:
         model.WT = Set(initialize=data_model["windgen"]["type"].columns.tolist())
         model.WT_gen = Param(model.T, model.WT, initialize = create_dict(data_model["windgen"]["generation"]))
@@ -139,7 +141,7 @@ def create_model(data_model):
         model.None_WT_num = Constraint(model.WT, rule=None_WT_num)
 
         
-     ## -- PARÁMETROS Y VARIABLES DEL GENERADOR DE RESPALDO -- ## 
+    ## -- PARÁMETROS Y VARIABLES DEL GENERADOR DE RESPALDO -- ## 
     if data_model["generator"]["active"]:
 
         model.FuelCost = Param(initialize = data_model["generator"]["fuel_cost"])
@@ -218,6 +220,39 @@ def create_model(data_model):
     model.Bcap = Var(model.BATT, model.T, domain=NonNegativeReals)                      # Capacidad de las baterías tipo [kWh] (2)
 
 
+    ## -- PARÁMETROS Y VARIABLES DE REACTIVOS -- ## 
+    model.QGn = Var(model.T, domain=NonNegativeReals) 
+    model.QGe = Var(model.T, domain=NonNegativeReals)
+    model.QIL = Var(model.T, domain=NonNegativeReals)
+
+    if data_model["load"]["reactive"]:
+        if data_model["grid"]["q_price"]["type"] == "fixed":            
+            model.Price_Q = Param(model.T, initialize= T_dict(T, np.repeat(data_model["grid"]["q_price"]["value"], len(T))))
+        elif data_model["grid"]["q_price"]["type"] == "variable":
+            model.Price_Q = Param(model.T, initialize= T_dict(T, data_model["grid"]["q_price"]["value"]))
+
+        model.Lim_Q = Param(initialize = data_model["grid"]["lim_q"])
+        model.fp_I = Param(initialize = np.tan(np.arccos(data_model["inverters"]["fp_set"])))
+        model.QL = Param(model.T, initialize = T_dict(T, data_model["load"]["reactive_value"]))
+        ## -- EXCEDENTES DE COMPRA DE REACTIVA -- ##
+        def exc_q(m, t):
+            return m.Lim_Q*(m.PGL[t] + sum(m.PGB[tch,tb,t] for tb in m.BATT for tch in m.CH)) >= m.QGn[t] - m.QGe[t]
+        model.exc_q = Constraint(model.T, rule=exc_q) 
+
+        def balance_QI(m, t):
+            return m.QIL[t] <= sum(sum(m.Xpv[tpv,tch]*m.P_mpp[t,tpv] for tpv in m.PVT) - m.PpvCur[tch,t] for tch in m.CH)*m.fp_I
+        model.balance_QI = Constraint(model.T, rule=balance_QI)   
+
+        def balance_QL(m, t):
+            return m.QIL[t] + m.QGn[t] + m.QGe[t] == m.QL[t]
+        model.balance_QL = Constraint(model.T, rule=balance_QL)  
+
+    else: 
+        model.Price_Q = Param(model.T, initialize= T_dict(T, np.repeat(0, len(T))))
+
+        def balance_QL(m, t):
+            return m.QIL[t] + m.QGn[t] + m.QGe[t] == 0
+        model.balance_QL = Constraint(model.T, rule=balance_QL)  
     #----------------------------------------------------------------------#
     ## -- ELEGIR UN SOLO INVERSOR -- ##
     if data_model["inverters"]["flex"]:
@@ -375,21 +410,25 @@ def create_model(data_model):
         model.EnvC = Param(initialize = data_model["environment"]["mu"]*data_model["environment"]["Cbono"]/1e6)
     else:
         model.EnvC = Param(initialize = 0)
- 
+    
+
+    
+
+
     #Función objetivo 
     def obj_rule(m):#regla(Función python)
         return  sum(m.Xpv[tpv,tch]*(m.PVtype['C_inst',tpv] + VPN_FS*m.PVtype['C_OM_y',tpv]) for tch in m.CH for tpv in m.PVT) \
                 + sum(m.XB[tb,tch]*(m.Battype['C_inst',tb] + VPN_FS*m.Battype['C_OM_y',tb]) for tch in m.CH for tb in m.BATT) \
-                + sum(sum(m.XCh[tpv,tb,tch] for tb in m.BATT for tpv in m.PVT)*(m.ConH['C_inst',tch] + VPN_FS*m.ConH['C_OM_y',tch]) for tch in m.CH) \
+                + sum(sum(m.XCh[tpv,tb,tch] for tb in m.BATT for tpv in m.PVT)*(m.ConH['C_inst',tch]  + VPN_FS*m.ConH['C_OM_y',tch]) for tch in m.CH) \
                 + sum(m.XT[tt]*(m.Windtype['C_inst',tt] + VPN_FS*m.Windtype['C_OM_y',tt]) for tt in m.WT) + m.GenCost \
                 + sum(sum(VPN_F[ii-1]*m.ConH['C_inst',tch]*sum(m.XCh[tpv,tb,tch] for tb in m.BATT for tpv in m.PVT) for ii in np.arange(int(m.ConH['ty',tch]),m.lifeyears,int(m.ConH['ty',tch]))) for tch in m.CH) \
                 + sum(sum(VPN_F[ii-1]*m.Battype['C_inst',tb]*sum(m.XB[tb,tch] for tch in m.CH) for ii in np.arange(int(m.Battype['ty',tb]),m.lifeyears,int(m.Battype['ty',tb]))) for tb in m.BATT) \
                 + sum(sum(VPN_F[ii-1]*m.Windtype['C_inst',tt]*m.XT[tt] for ii in np.arange(int(m.Windtype['ty',tt]),m.lifeyears,int(m.Windtype['ty',tt]))) for tt in m.WT) \
-                + VPN_FS*sum(m.Price_Grid[t]*(m.PGL[t] + sum(m.PGB[tch,tb,t] for tb in m.BATT for tch in m.CH)) +
+                + VPN_FS*sum(m.Price_Grid[t]*(m.PGL[t] + sum(m.PGB[tch,tb,t] for tb in m.BATT for tch in m.CH))  +
                              m.FuelCost*(m.GenFmin*m.GenOn[t] + m.GenFm*m.PD[t]) + m.GenOMCost*m.GenOn[t] +
                              m.Price_ENS[t]*m.ENS[t] - m.Ppvusd[t]*(sum(m.PpvG[tch,t] for tch in m.CH) + m.PTG[t]) -
                              m.EnvC*sum(sum(m.Xpv[tpv,tch]*m.P_mpp[t,tpv] for tpv in m.PVT) - m.PpvCur[tch,t] for tch in m.CH) -
-                             m.EnvC*(sum(m.XT[tt]*m.WT_gen[t,tt] for tt in m.WT) - m.PTCur[t]) for t in m.T)
+                             m.EnvC*(sum(m.XT[tt]*m.WT_gen[t,tt] for tt in m.WT) - m.PTCur[t]) + m.Price_Q[t]*(m.QGe[t]) for t in m.T)
                 
                 
 
