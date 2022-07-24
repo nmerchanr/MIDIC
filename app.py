@@ -272,7 +272,7 @@ if menu_select == menu_options[0]:
 
                     st.subheader("Precio ENS por hora y día del año")
                     st.altair_chart(createfig_heatmap(Price_ENS, ENS_price_col, fechas, False, currency_data + "/kWh").interactive(), use_container_width=True)
-
+        per_cargas_no_criticas = st.number_input("Porcentaje de cargas NO críticas (deslastrables) [%]",min_value=0,max_value=100, value=0)
 
     st.markdown("""<hr style="height:7px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
