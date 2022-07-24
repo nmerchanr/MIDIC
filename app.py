@@ -430,7 +430,7 @@ if menu_select == menu_options[0]:
             OR_grid, gridOptions_OR = interactive_table(OR_indice, selection = "single", cat = False, editable = False)
             update_mode_value = GridUpdateMode.MODEL_CHANGED
             st.subheader("Operadores de red")
-            st.write("A continuación encontrará el listado de las empresas sobre las cuales puede consultar el costo unitario y la tarifa de prestación del servicio.")
+            st.write("A continuación, encontrará el listado de las empresas sobre las cuales puede consultar el costo unitario y la tarifa de prestación del servicio.")
             grid_response_OR = AgGrid(OR_grid, gridOptions=gridOptions_OR, update_mode=update_mode_value, allow_unsafe_jscode=True, theme= "streamlit", fit_columns_on_grid_load=True)
             
             selected_OR = grid_response_OR['selected_rows']
@@ -453,10 +453,10 @@ if menu_select == menu_options[0]:
                 
                 with cols[0]:
                     st.subheader("Precio de compra :inbox_tray:")
-                    purchase_type = st.radio("¿Cómo se constituirá el precio de compra a la red?",["Promedio de los ultimos 12 meses", "Seleccionar precio de un mes específico", "Serie temporal mensual"])
+                    purchase_type = st.radio("¿Cómo se constituirá el precio de compra a la red?",["Promedio de los últimos 12 meses", "Seleccionar precio de un mes específico", "Serie temporal basada de los últimos 12 meses"])
                     level_price = st.selectbox("Seleccione el estrato o sector",price_user.columns[3:])
 
-                    if purchase_type == "Promedio de los ultimos 12 meses":
+                    if purchase_type == "Promedio de los últimos 12 meses":
                         AgGrid(price_user, theme='streamlit')
                         purchase_price = price_user[level_price].mean()
                         data_model["grid"]["buy_price"] = {}
@@ -464,7 +464,7 @@ if menu_select == menu_options[0]:
                         data_model["grid"]["buy_price"]["value"] = purchase_price*data_model["cop_to_usd"]
                         data_model["grid"]["buy_price"]["len"] = 0
                                                
-                        st.info(f'Precio promedio ultimos 12 meses para  {level_price}: **{purchase_price:.5f} COP/kWh** o **{data_model["grid"]["buy_price"]["value"]:.5f} USD/kWh**')
+                        st.info(f'Precio promedio últimos 12 meses para  {level_price}: **{purchase_price:.5f} COP/kWh** o **{data_model["grid"]["buy_price"]["value"]:.5f} USD/kWh**')
                         
                     elif purchase_type == "Seleccionar precio de un mes específico":
 
@@ -484,7 +484,7 @@ if menu_select == menu_options[0]:
                             st.info(f'Precio seleccionado para {level_price}: **{purchase_price:.5f} COP/kWh** o **{data_model["grid"]["buy_price"]["value"]:.5f} USD/kWh**')
                             
 
-                    elif purchase_type == "Serie temporal mensual":
+                    elif purchase_type == "Serie temporal basada de los últimos 12 meses":
                         
                         mes = fechas.month
                         purchase_price = np.zeros_like(mes)
@@ -504,9 +504,9 @@ if menu_select == menu_options[0]:
                     st.subheader("Precio de venta :outbox_tray:")
                     st.info("El precio de venta se define como: Ps = CU - CV")
 
-                    sell_type = st.radio("¿Cómo se constituirá el precio de venta a la red?",["Promedio de los ultimos 12 meses", "Seleccionar precio de un mes específico", "Serie temporal mensual"])
+                    sell_type = st.radio("¿Cómo se constituirá el precio de venta a la red?",["Promedio de los últimos 12 meses", "Seleccionar precio de un mes específico", "Serie temporal basada de los últimos 12 meses"])
                     
-                    if sell_type == "Promedio de los ultimos 12 meses":
+                    if sell_type == "Promedio de los últimos 12 meses":
                         AgGrid(price_comp, theme='streamlit')
                         
                         sell_price = (price_comp["CU"] - price_comp["CV"]).mean()
@@ -515,7 +515,7 @@ if menu_select == menu_options[0]:
                         data_model["grid"]["sell_price"]["value"] = sell_price*data_model["cop_to_usd"]
                         data_model["grid"]["sell_price"]["len"] = 0
                         
-                        st.info(f'Precio promedio ultimos 12 meses: **{sell_price:.5f} COP/kWh** o **{data_model["grid"]["sell_price"]["value"]:.5f} USD/kWh**')
+                        st.info(f'Precio promedio últimos 12 meses: **{sell_price:.5f} COP/kWh** o **{data_model["grid"]["sell_price"]["value"]:.5f} USD/kWh**')
                     
                     elif sell_type == "Seleccionar precio de un mes específico":
 
@@ -534,7 +534,7 @@ if menu_select == menu_options[0]:
 
                             st.info(f'Precio seleccionado: **{sell_price:.5f} COP/kWh** o **{data_model["grid"]["sell_price"]["value"]:.5f} USD/kWh**')
 
-                    elif sell_type == "Serie temporal mensual":
+                    elif sell_type == "Serie temporal basada de los últimos 12 meses":
                         
                         mes = fechas.month
                         sell_price = np.zeros_like(mes)
@@ -551,9 +551,6 @@ if menu_select == menu_options[0]:
                         st.altair_chart(createfig_heatmap(pd.DataFrame(data = {'Price': sell_price}), 'Price', fechas, False, "COP/kWh").interactive(), use_container_width=True)
                         
          
-    
-
-
         if load_profile_csv is not None:
             if data_model["load"]["reactive"]:
                 
@@ -613,18 +610,20 @@ if menu_select == menu_options[0]:
                 ms_sel = "Usuario"
             
             if ms_sel == "Resolución CREG 174 de 2021":
-                sys_type = st.selectbox("El sistema está conectado al transformador de distribucion : ", ["Independiente", "Con otros usuarios"])
-                if sys_type == "Independiente":                
+                sys_type = st.selectbox("El circuito, transformador o subestación donde se solicita el punto de conexión del proyecto es compartido con otros GD o AGPE: ", ["No", "Si"])
+                if sys_type == "No":                
                     if load_profile_csv is not None:
                         min_load_mean = np.round(np.mean([np.min(data_model["load"]["value"][i:i+24]) for i in np.arange(0,len(data_model["load"]["value"]), 24)]), 4)
 
                         if min_load_mean > data_model["grid"]["pmax_buy"]*0.5:
-                            st.info("Según el perfil de demanda de potencia activa ingresado, el promedio de potencia de las horas con minima demanda diaria es de: **" + str(min_load_mean) + "kW** el cual es mayor al 50% de la potencia maxima de compra de la red. Por tanto, el límite de inyecciones de potencia a la red será **el 50% de la potencia maxima de compra de la red**")
+                            st.info("Según el perfil de demanda de potencia activa ingresado, el promedio  anual de potencia de las horas de mínima demanda diaria es de: **" + str(round(min_load_mean,2)) + " kW** el cual es mayor al 50% de la potencia maxima de compra de la red. Por tanto, el límite de inyecciones de potencia a la red será **el 50% de la potencia máxima de compra de la red**")
                             data_model["grid"]["pmax_sell"] = data_model["grid"]["pmax_buy"]*0.5
                         else:
-                            st.info("Según el perfil de demanda de potencia activa ingresado, el promedio de potencia de las horas con minima demanda diaria es de: **" + str(min_load_mean) + "kW** el cual es menor al 50% de la potencia maxima de compra de la red. Por tanto, el límite de inyecciones de potencia a la red será **el promedio de potencia de las horas con minima demanda diaria**")
+                            st.info("Según el perfil de demanda de potencia activa ingresado, el promedio anual de potencia de las horas de mínima demanda diaria es de: **" + str(round(min_load_mean,2)) + " kW** el cual es menor al 50% de la potencia maxima de compra de la red. Por tanto, el límite de inyecciones de potencia a la red será **el promedio de potencia de las horas con minima demanda diaria**")
                             data_model["grid"]["pmax_sell"] = min_load_mean
-                elif sys_type == "Con otros usuarios": 
+                    else:
+                        st.info("Ingrese un perfil de demanda en la sección de **Demanda**")
+                elif sys_type == "Si": 
                     data_model["grid"]["pmax_sell"] = st.number_input("Potencia máxima de inyección a la red según estudio de conexión (kW)", value = 0.5*data_model["grid"]["pmax_buy"])
             elif ms_sel == "Usuario":
                 data_model["grid"]["pmax_sell"] = st.number_input("Potencia máxima de inyección a la red según estudio de conexión (kW)", value = 0.5*data_model["grid"]["pmax_buy"])
@@ -638,16 +637,16 @@ if menu_select == menu_options[0]:
 
         data_model["grid"]["av"] = {}
 
-        av_choice = st.radio("Ingresar perfil de disponibilidad:", ["No", "Si"])
+        av_choice = st.radio("Considerar indisponibilidad de la red:", ["Si","No"])
         
         if av_choice == "Si":  
             if price_input == "Históricos de operador de red colombiano":
-                av_type = st.selectbox("Origen de datos: ", ["Operador de red", "Usuario"])      
+                av_type = st.selectbox("Origen de datos: ", ["SAIDI y SAIFI del Operador de red", "Usuario"])      
             else: 
                 av_type = "Usuario"
             
             if av_type == "Usuario":
-                av_profile_csv = st.file_uploader("Cargar csv binario con (1: red disponible, 0: red no disponible)", type = ['csv'])
+                av_profile_csv = st.file_uploader("Cargar csv con vector de datos binarios de longitud 8760 (1: red disponible, 0: red no disponible)", type = ['csv'])
                 if av_profile_csv is not None:
 
                     data_model["grid"]["av"]["active"] = True
@@ -668,7 +667,7 @@ if menu_select == menu_options[0]:
 
                         st.subheader("Disponibilidad de la red por hora y día del año")
                         st.altair_chart(createfig_heatmap(av_grid, av_col, fechas, True, "[1,0]").interactive(), use_container_width=True)
-            elif av_type == "Operador de red":
+            elif av_type == "SAIDI y SAIFI del Operador de red":
 
                 if len(selected_OR) > 0:
                     if selected_OR[0]["Empresa"]== "ENEL COLOMBIA S.A. E.S.P.":
