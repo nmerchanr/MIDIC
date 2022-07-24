@@ -25,8 +25,9 @@ from funciones import load_cat, get_data_fromNSRDB, power_PV_calculation, extrac
 from funciones import generate_metrics, generate_metrics_av, calculate_WT_power, read_model, results_num_equipment, results_economic, createline_echart, interactive_table, extract_table, perfil_indisponibilidad
 
 # Título y configuración de página
-st.set_page_config(page_title="MIDOTIC", page_icon=":battery:", layout="wide", initial_sidebar_state="auto", menu_items=None)
-st.title("MIDOTIC - Microgrid Design Optimization Tool with Inverter Constraints")
+st.set_page_config(page_title="MIDIC", page_icon=":battery:", layout="wide", initial_sidebar_state="auto", menu_items=None)
+st.title("MIDIC - Microgrid Design Optimization Tool with Inverter Constraints")
+st.sidebar.title("MIDIC - Microgrid Design Optimization Tool with Inverter Constraints")
 st.markdown("""<hr style="height:7px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
 data_model = {}
