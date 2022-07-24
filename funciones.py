@@ -38,7 +38,7 @@ def perfil_indisponibilidad(SAIDI,SAIFI,tamano):
 @st.cache
 def load_cat():
     # Cargar datos de módulos PV
-    PVtype = pd.read_excel('Catalogo.xlsx',sheet_name='PVModules',header=0,index_col=0)
+    PVtype = pd.read_excel('Catalogo.xlsx',sheet_name='PVModuleS',header=0,index_col=0)
     # Cargar datos de módulos de Batt
     Battype = pd.read_excel('Catalogo.xlsx',sheet_name='BattModuleS',header=0,index_col=0)
     # Cargar datos de generadores
