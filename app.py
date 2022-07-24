@@ -673,7 +673,7 @@ if menu_select == menu_options[0]:
             
         elif av_choice == "No" and selected_OR[0]["Empresa"]== "ENEL COLOMBIA S.A. E.S.P." and price_input == "Históricos de operador de red colombiano":
             
-            SAIDI=9.283
+            SAIDI=8.112
             SAIDI_minuto=487
             SAIFI=8.1
             
