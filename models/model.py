@@ -240,7 +240,7 @@ def create_model(data_model):
         model.exc_q = Constraint(model.T, rule=exc_q) 
 
         def balance_QI(m, t):
-            return m.QIL[t] <= sum(sum(m.Xpv[tpv,tch]*m.P_mpp[t,tpv] for tpv in m.PVT) - m.PpvCur[tch,t] for tch in m.CH)*m.fp_I
+            return m.QIL[t] <= (sum(sum(m.Xpv[tpv,tch]*m.P_mpp[t,tpv] for tpv in m.PVT) - m.PpvCur[tch,t] for tch in m.CH) + sum(m.PBL[tch,tb,t] for tb in m.BATT for tch in m.CH))*m.fp_I
         model.balance_QI = Constraint(model.T, rule=balance_QI)   
 
         def balance_QL(m, t):

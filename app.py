@@ -25,8 +25,8 @@ from funciones import load_cat, get_data_fromNSRDB, power_PV_calculation, extrac
 from funciones import generate_metrics, generate_metrics_av, calculate_WT_power, read_model, results_num_equipment, results_economic, createline_echart, interactive_table, extract_table, perfil_indisponibilidad
 
 # Título y configuración de página
-st.set_page_config(page_title="MIDIC", page_icon=":battery:", layout="wide", initial_sidebar_state="auto", menu_items=None)
-st.title("MIDIC - Microgrid Design Optimization Tool with Inverter Constraints")
+st.set_page_config(page_title="MIDOTIC", page_icon=":battery:", layout="wide", initial_sidebar_state="auto", menu_items=None)
+st.title("MIDOTIC - Microgrid Design Optimization Tool with Inverter Constraints")
 st.markdown("""<hr style="height:7px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
 data_model = {}
@@ -640,62 +640,70 @@ if menu_select == menu_options[0]:
 
         av_choice = st.radio("Ingresar perfil de disponibilidad:", ["No", "Si"])
         
-        if av_choice == "Si":        
-
-            av_profile_csv = st.file_uploader("Cargar csv binario con (1: red disponible, 0: red no disponible)", type = ['csv'])
-            if av_profile_csv is not None:
-
-                data_model["grid"]["av"]["active"] = True
-
-                av_profile = pd.read_csv(av_profile_csv)
-                av_col = st.selectbox("Columna que contiene la disponibilidad de la red", options=av_profile.columns.to_numpy())
-                av_grid = av_profile.loc[:,[av_col]]
-
-                data_model["grid"]["av"]["value"] = av_grid[av_col].to_numpy()
-
-                with st.expander("Visualizar gráficos. Disponibilidad de la red"):
-
-                    st.subheader("Métricas")                     
-
-                    av_grid_metric = generate_metrics_av(av_grid, av_col)
-
-                    st.dataframe(av_grid_metric)          
-
-                    st.subheader("Disponibilidad de la red por hora y día del año")
-                    st.altair_chart(createfig_heatmap(av_grid, av_col, fechas, True, "[1,0]").interactive(), use_container_width=True)
-
+        if av_choice == "Si":  
+            if price_input == "Históricos de operador de red colombiano":
+                av_type = st.selectbox("Origen de datos: ", ["Operador de red", "Usuario"])      
             else: 
-                data_model["grid"]["av"]["active"] = False
-        
-        elif av_choice == "No" and price_input == "Históricos dados por el usuario":
+                av_type = "Usuario"
+            
+            if av_type == "Usuario":
+                av_profile_csv = st.file_uploader("Cargar csv binario con (1: red disponible, 0: red no disponible)", type = ['csv'])
+                if av_profile_csv is not None:
 
-            data_model["grid"]["av"]["active"] = False
-            
-        elif av_choice == "No" and selected_OR[0]["Empresa"]== "ENEL COLOMBIA S.A. E.S.P." and price_input == "Históricos de operador de red colombiano":
-            
-            SAIDI=8.112
-            SAIDI_minuto=487
-            SAIFI=8.1
-            
-            st.success( "Usted eligió el operador de red " +  selected_OR[0]["Empresa"] + " se creará un perfil teniendo en cuenta que el SAIDI reportado por la empresa es de: "+ str(SAIDI_minuto)+ " minutos y el SAIFI es de: " + str(SAIFI))
+                    data_model["grid"]["av"]["active"] = True
 
-            data_model["grid"]["av"]["active"] = perfil_indisponibilidad(SAIDI,SAIFI,8760)
-            
-        elif av_choice == "No" and selected_OR[0]["Empresa"]== "AIR-E S.A.S. E.S.P." and price_input == "Históricos de operador de red colombiano": 
-            
-            SAIDI=56.34
-            SAIFI=67.33
-            
-            st.success( "Usted eligió el operador de red " +  selected_OR[0]["Empresa"] + " se creará un perfil teniendo en cuenta que el SAIDI reportado por la empresa es de: "+ str(SAIDI)+ " horas y el SAIFI es de: " + str(SAIFI))
+                    av_profile = pd.read_csv(av_profile_csv)
+                    av_col = st.selectbox("Columna que contiene la disponibilidad de la red", options=av_profile.columns.to_numpy())
+                    av_grid = av_profile.loc[:,[av_col]]
 
-            data_model["grid"]["av"]["active"] = perfil_indisponibilidad(SAIDI,SAIFI,8760)
+                    data_model["grid"]["av"]["value"] = av_grid[av_col].to_numpy()
+
+                    with st.expander("Visualizar gráficos. Disponibilidad de la red"):
+
+                        st.subheader("Métricas")                     
+
+                        av_grid_metric = generate_metrics_av(av_grid, av_col)
+
+                        st.dataframe(av_grid_metric)          
+
+                        st.subheader("Disponibilidad de la red por hora y día del año")
+                        st.altair_chart(createfig_heatmap(av_grid, av_col, fechas, True, "[1,0]").interactive(), use_container_width=True)
+            elif av_type == "Operador de red":
+
+                if len(selected_OR) > 0:
+                    if selected_OR[0]["Empresa"]== "ENEL COLOMBIA S.A. E.S.P.":
+                        
+                        data_model["grid"]["av"]["active"] = True
+
+                        SAIDI=8.112                        
+                        SAIFI=8.1
+                        
+                        st.success( "Usted eligió el operador de red " +  selected_OR[0]["Empresa"] + " se creará un perfil teniendo en cuenta que el SAIDI reportado por la empresa es de: "+ str(SAIDI)+ " horas y el SAIFI es de: " + str(SAIFI))
+
+                        data_model["grid"]["av"]["value"] = perfil_indisponibilidad(SAIDI,SAIFI,8760)
+
+                        st.altair_chart(createfig_heatmap(pd.DataFrame(data = {"Av":data_model["grid"]["av"]["value"]}), "Av", fechas, True, "[1,0]").interactive(), use_container_width=True)
+
+                    elif selected_OR[0]["Empresa"]== "AIR-E S.A.S. E.S.P.":
+
+                        data_model["grid"]["av"]["active"] = True
+
+                        SAIDI=56.34
+                        SAIFI=67.33
+                        
+                        st.success( "Usted eligió el operador de red " +  selected_OR[0]["Empresa"] + " se creará un perfil teniendo en cuenta que el SAIDI reportado por la empresa es de: "+ str(SAIDI)+ " horas y el SAIFI es de: " + str(SAIFI))
+
+                        data_model["grid"]["av"]["value"] = perfil_indisponibilidad(SAIDI,SAIFI,8760)
+                        st.altair_chart(createfig_heatmap(pd.DataFrame(data = {"Av":data_model["grid"]["av"]["value"]}), "Av", fechas, True, "[1,0]").interactive(), use_container_width=True)
+
             
-        elif av_choice == "No":
+                else:
+                    st.warning("Seleccione un operador de red en la sección de precios para continuar")
 
-            data_model["grid"]["av"]["active"] = False
+        else: 
+            data_model["grid"]["av"]["active"] = False      
 
-    else:
-        data_model["grid"]["active"] = False
+
 
 
     
@@ -875,7 +883,7 @@ if menu_select == menu_options[0]:
         data_model["generator"]["pmax"] = st.number_input("Potencia maxima: kW", min_value=0.0, max_value=None, value = 10.0)
         data_model["generator"]["fmin"] = st.number_input("Consumo de combustible a potencia 0: L/h", min_value=0.0, max_value=None, value = 1.0)
         data_model["generator"]["fmax"] = st.number_input("Consumo de combustible a máxima potencia: L/h", min_value=0.0, max_value=None, value = 18.0)
-        data_model["generator"]["nvioel_cost"] = st.number_input("Costo del litro de combustible: " + currency_data + "/L", min_value=0.0, max_value=None, step = 0.1, value = 0.5934)*data_model["in_data_to_usd"]
+        data_model["generator"]["fuel_cost"] = st.number_input("Costo del litro de combustible: " + currency_data + "/L", min_value=0.0, max_value=None, step = 0.1, value = 0.5934)*data_model["in_data_to_usd"]
         data_model["generator"]["gen_cost"] = st.number_input("Costo de instalación: " + currency_data, min_value=0.0, max_value=None, step = 1.0, value = 0.0)*data_model["in_data_to_usd"]
         data_model["generator"]["gen_OM_cost"] = st.number_input("Costo de OM: " + currency_data + "/h", min_value=0.0, max_value=None, step = 1.0, value = 1.0)*data_model["in_data_to_usd"]          
         data_model["generator"]["min_p_load"] = st.number_input("Porcentaje de carga mínimo para funcionar: (%)", min_value=0, max_value=None, value = 10)
@@ -1060,7 +1068,7 @@ elif menu_select == menu_options[1]:
 
             if currency_results != "USD": 
                 for i,j in zip(exchange_data.keys(),exchange_data.values()):    
-                    st.metric(i[0:3], str(round(j,5)) + " " + i[4:])
+                    st.sidebar.metric(i[0:3], str(round(j,5)) + " " + i[4:])
         except:
             st.sidebar.error("Error con el servidor de divisas. Solo es posible crear el modelo en dolares")
             data_model["usd_to_results"] = 1
@@ -1084,26 +1092,39 @@ elif menu_select == menu_options[1]:
         st.markdown("""<hr style="height:5px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
         if visualizar_op == "Análisis económico":
-            res_ec, vpn_tab, nom_tab = results_economic(model, data_model)
-
-            cols = st.columns(3)
+            res_ec, vpn_tab, nom_tab, LCOE, NPC = results_economic(model, data_model)
 
             vpn = vpn_tab.iloc[-1,-1]            
 
-            cols[0].metric("Valor Presente Neto (VPN)", f'{vpn:.2f} {currency_results}', "Proyecto inviable" if vpn < 0 else "Proyecto viable", "inverse" if vpn < 0 else "normal")
-            cols[1].metric("Inversión incial", f'{res_ec["Capin"]:.2f} {currency_results}')
-            cols[2].metric("Costos de OM anuales", f'{res_ec["COM"]:.2f} {currency_results}')
-
-            cols[0].metric("Costos anuales de compra de energía", f'{res_ec["Ce"]:.2f} {currency_results}')
-            cols[1].metric("Costos anuales por energía no suministrada", f'{res_ec["Cens"]:.2f} {currency_results}')
-            cols[2].metric("Costos anuales totales", f'{res_ec["Cy"]:.2f} {currency_results}')
             
+            st.subheader("Indicadores económicos :bar_chart:")
+            cols = st.columns(3)
+
+            cols[0].metric("Valor Presente Neto (VPN)", f'{vpn:.2f} {currency_results}', "Proyecto inviable" if vpn < 0 else "Proyecto viable", "inverse" if vpn < 0 else "normal")
+            cols[1].metric("Costo presente Neto (CPN)", f'{NPC:.2f} {currency_results}')
+            cols[2].metric("Costo nivelado de energía", f'{LCOE:.4f} {currency_results}/kWh')
+
+            st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
+            
+            st.subheader("Inversión inicial, costos y penalizaciones :chart_with_downwards_trend:")
+            cols = st.columns(3)
+            
+            cols[0].metric("Inversión incial", f'{res_ec["Capin"]:.2f} {currency_results}')
+            cols[1].metric("Costos de OM anuales", f'{res_ec["COM"]:.2f} {currency_results}')
+            cols[2].metric("Costos anuales de compra de energía de la red", f'{res_ec["Cg"]:.2f} {currency_results}')
+
+            cols[0].metric("Costos anuales en combustible", f'{res_ec["Cd"]:.2f} {currency_results}')
+            cols[1].metric("Costos anuales por energía no suministrada", f'{res_ec["Cens"]:.2f} {currency_results}')
+            cols[2].metric("Penalizaciones anuales por exceso de reactivos", f'{res_ec["Cq"]:.2f} {currency_results}')
+            
+            st.markdown("""<hr style=" border-top: 2px double #5D7837;" /> """, unsafe_allow_html=True)
+            
+            st.subheader("Recaudos y ahorros :chart_with_upwards_trend:")
+            cols = st.columns(3)
+
             cols[0].metric("Recaudos anuales por bonos ambientales", f'{res_ec["Renv"]:.2f} {currency_results}')
-            cols[1].metric("Recaudos anuales por venta de energía", f'{res_ec["Re"]:.2f} {currency_results}')
-            cols[2].metric("Recaudos anuales totales", f'{res_ec["Ry"]:.2f} {currency_results}')
-
-            cols[1].metric("Ahorros anuales en energía", f'{res_ec["Ay"]:.2f} {currency_results}')
-
+            cols[1].metric("Recaudos anuales por venta de energía", f'{res_ec["Re"]:.2f} {currency_results}')            
+            cols[2].metric("Ahorros anuales en energía", f'{res_ec["Ay"]:.2f} {currency_results}')
             
 
             st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)

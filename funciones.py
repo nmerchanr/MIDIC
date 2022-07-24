@@ -13,23 +13,26 @@ import cloudpickle
 from st_aggrid import GridOptionsBuilder
 from numpy import random
 import math
+from pyomo.environ import value
 
 @st.cache
 def perfil_indisponibilidad(SAIDI,SAIFI,tamano):
-    perfil= np.ones(tamano)
-    Grid_dis=random.choice([0, 1], size=(tamano))
-    
-    if SAIDI/SAIFI <1.5:
-        for i in range(0,tamano):
-            list = perfil.tolist()
-            a=list.count(0)
-            if a<math.ceil(SAIFI) and perfil[i-1]!=0 and perfil[i+1]!=0:
-             perfil[i] = Grid_dis[i]
-            else:
-             perfil[i] = 1
-    else: 
-        perfil[i] = Grid_dis[i]
-    return perfil
+    prob_saifi = np.random.normal(SAIFI, 0.1, 1)
+
+    dias = []
+
+    for i in range(0, round(prob_saifi[0])):
+        dias.append(np.random.randint(0,tamano-1))
+
+
+    prob_saidi = np.abs(np.random.normal(SAIDI/SAIFI, 1, len(dias)))
+
+    disp = np.ones(tamano)
+
+    for k, d in enumerate(dias):
+        disp[d:d + int(np.round(prob_saidi[k]))] = 0
+
+    return disp
 
 
 @st.cache
@@ -410,11 +413,15 @@ def results_economic(m, data_model):
     data["Ay"] = (sum(m.Price_Grid[t]*(sum(m.PBL[tch,tb,t].value for tb in m.BATT for tch in m.CH) + sum(m.ConH['n_dcac',tch]*m.PpvL[tch,t].value for tch in m.CH)) + m.PTL[t].value for t in m.T))*data_model["usd_to_results"]
     #data["Ay"] = (sum(m.Price_Grid[t]*(sum(m.ConH['n_dcac',tch]*m.PpvL[tch,t].value for tch in m.CH)) + m.PTL[t].value for t in m.T))*data_model["usd_to_results"]
 
-    data["Ce"] = (sum(m.Price_Grid[t]*(m.PGL[t].value + sum(m.PGB[tch,tb,t].value for tb in m.BATT for tch in m.CH)) + m.FuelCost*(m.GenFmin*m.GenOn[t].value + m.GenFm*m.PD[t].value) for t in m.T))*data_model["usd_to_results"]
+    data["Cg"] = (sum(m.Price_Grid[t]*(m.PGL[t].value + sum(m.PGB[tch,tb,t].value for tb in m.BATT for tch in m.CH)) + m.FuelCost*(m.GenFmin*m.GenOn[t].value + m.GenFm*m.PD[t].value) for t in m.T))*data_model["usd_to_results"]
+
+    data["Cd"] = (sum(m.FuelCost*(m.GenFmin*m.GenOn[t].value + m.GenFm*m.PD[t].value) for t in m.T))*data_model["usd_to_results"]
 
     data["Cens"] = (sum(m.Price_ENS[t]*m.ENS[t].value for t in m.T))*data_model["usd_to_results"]
 
-    data["Cy"] = data["Ce"] + data["Cens"]
+    data["Cq"] = sum(m.Price_Q[t]*m.QGe[t].value for t in m.T)*data_model["usd_to_results"]
+
+    data["Cy"] = data["Cd"] + data["Cens"] + data["Cq"]
 
     
 
@@ -453,7 +460,11 @@ def results_economic(m, data_model):
     VPN_cash_flow.columns.name = VPN_cash_flow.index.name
     VPN_cash_flow.index.name = None
 
-    return data, VPN_cash_flow, Nom_flow
+    NPC = value(m.Obj)
+
+    LCOE = NPC/(sum(m.Carga[t] - m.ENS[t].value + sum(m.PpvG[tch,t].value for tch in m.CH) + m.PTG[t].value for t in m.T)*np.sum(VPN__F))*data_model["usd_to_results"]
+
+    return data, VPN_cash_flow, Nom_flow, LCOE, NPC
 
 def createline_echart(df, x_col, y_col, y_name, xlabel, ylabel, color, x_date = False, x_type = None, data_zoom = True):
     
