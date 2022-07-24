@@ -178,7 +178,7 @@ if menu_select == menu_options[0]:
         
         st.subheader("Perfil de demanda :bulb:")
 
-        load_profile_csv = st.file_uploader("Cargar perfil de carga en csv", type = ['csv'])
+        load_profile_csv = st.file_uploader("Cargar perfil de demanda mediante archivo csv:", type = ['csv'])
         if load_profile_csv is not None:
             # Can be used wherever a "file-like" object is accepted:
             
@@ -383,7 +383,7 @@ if menu_select == menu_options[0]:
                             st.altair_chart(createfig_heatmap(Price_Grid, purchase_rate_col, fechas, False, currency_data + "/kWh").interactive(), use_container_width=True)
 
                     else: 
-                        st.info("Cargue el archivo un archivo csv con la serie temporal de precios de compra en una de sus columnas.")
+                        st.info("Cargue un archivo csv con la serie temporal de precios de compra en una de sus columnas.")
 
             with cols[1]:
 
