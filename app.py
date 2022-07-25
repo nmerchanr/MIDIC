@@ -289,32 +289,59 @@ if menu_select == menu_options[0]:
 
     img12=Image.open("imagenes/"+"Carga.PNG").convert("RGBA").resize((145, 250))
     fondo.paste(img12,(635,0),img12)
+    
+    topo_red=0
+    topo_aereo=0
+    topo_pv=0
+    topo_die=0
+    topo_ess=0
 
+    
     if 'Red'in options:
         img=Image.open("imagenes/"+"Red.PNG").convert("RGBA").resize((170, 280))
         fondo.paste(img,(630,490),img)
-        
+        topo_red=1
     if 'Aerogenerador'in options:
         img2=Image.open("imagenes/"+"Aerogenerador.PNG").convert("RGBA").resize((220, 200))
         fondo.paste(img2,(350,75),img2)
-        
+        topo_aereo=1
+
         
     if 'Módulos fotovoltaicos'in options:
         img1=Image.open("imagenes/"+"panel.PNG").convert("RGBA").resize((290, 188))
         fondo.paste(img1,(260,257),img1)
+        topo_pv=1
 
     if 'Generador'in options:
         img3=Image.open("imagenes/"+"generador.PNG").convert("RGBA").resize((230, 190))
         fondo.paste(img3,(795,472),img3)
+        topo_die=1
 
     if 'Sistema de almacenamiento (ESS)'in options:
         img4=Image.open("imagenes/"+"almacenamiento.PNG").convert("RGBA").resize((300, 150))
         fondo.paste(img4,(900,310),img4)
-        
+        topo_ess=1       
     st.image(fondo,use_column_width="auto")
 
     data_model["grid"] = {}
 
+    if topo_red==0  and (topo_aereo==1 or topo_pv==1) and topo_die==0 and topo_ess==0:
+
+        st.info("Se recomienda instalar un sistema de almacenamiento.")
+        
+    if topo_red==0  and topo_aereo==0 and topo_pv==0 and topo_die==0 and topo_ess==0:
+
+        st.error("Se debe agregar almenos un generador de energía.")
+    
+    if topo_red==0  and topo_aereo==0 and topo_pv==0 and topo_die==0 and topo_ess==1:
+
+        st.error("Se debe agregar almenos un generador de energía.")
+        
+        
+    if topo_red==1  and topo_aereo==0 and topo_pv==0 and topo_die==0 and topo_ess==0:
+
+        st.info("Se recomienda instalar una fuente de energía renovable.")
+            
     if 'Red' in options:
 
         st.markdown("""<hr style="border:2px dashed Salmon;border-radius:5px;" /> """, unsafe_allow_html=True)
