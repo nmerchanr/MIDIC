@@ -48,6 +48,7 @@ menu_select = option_menu(menu_title = "Menú de opciones", options = menu_optio
 if menu_select == menu_options[0]:
 
     st.sidebar.title("Crear modelo :wrench:")  
+    st.sidebar.image(Image.open("Imagenes/UNAL.PNG"))
     st.header("Parámetros generales del proyecto :black_nib:")
 
     cols_gen = st.columns(2)
@@ -1049,6 +1050,7 @@ elif menu_select == menu_options[1]:
 
     st.sidebar.subheader("Carga del archivo de resultados")
     results_model = st.sidebar.file_uploader("Cargue el archivo .pkl generado con los resultados")
+    st.sidebar.image(Image.open("Imagenes/UNAL.PNG"))
     if results_model is not None:
         model_dict = read_model(results_model)
 
@@ -1287,4 +1289,3 @@ elif menu_select == menu_options[1]:
             #st.altair_chart((fig_res_carga).interactive(), use_container_width=True)
 
 
-st.sidebar.image(Image.open('Imagenes/UNAL.png'))
