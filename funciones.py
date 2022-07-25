@@ -460,9 +460,9 @@ def results_economic(m, data_model):
     VPN_cash_flow.columns.name = VPN_cash_flow.index.name
     VPN_cash_flow.index.name = None
 
-    NPC = value(m.Obj)
+    NPC = value(m.Obj)*data_model["usd_to_results"]
 
-    LCOE = NPC/(sum(m.Carga[t] - m.ENS[t].value + sum(m.PpvG[tch,t].value for tch in m.CH) + m.PTG[t].value for t in m.T)*np.sum(VPN__F))*data_model["usd_to_results"]
+    LCOE = NPC/(sum(m.Carga[t] - m.ENS[t].value + sum(m.PpvG[tch,t].value for tch in m.CH) + m.PTG[t].value for t in m.T)*np.sum(VPN__F))
 
     return data, VPN_cash_flow, Nom_flow, LCOE, NPC
 

@@ -273,7 +273,7 @@ def create_model(data_model):
     #----------------------------------------------------------------------#
     # Número de strings por tipo de panel e inversor
     def PV_string_rule(m,tpv,tch):#,t para todo t en T
-        return m.Xpvs[tpv, tch] <= sum(m.XCh[tpv,tb,tch] for tb in model.BATT)*int(m.ConH['Num_mpp',tch]*m.ConH['Num_in_mpp',tch]*np.floor(m.ConH['Idc_max_in',tch]/m.PVtype['Isc_STC',tpv]))
+        return m.Xpvs[tpv, tch] <= sum(m.XCh[tpv,tb,tch] for tb in m.BATT)*int(m.ConH['Num_mpp',tch]*m.ConH['Num_in_mpp',tch]*np.floor(m.ConH['Idc_max_in',tch]/m.PVtype['Isc_STC',tpv]))
     model.PV_string=Constraint(model.PVT, model.CH, rule=PV_string_rule)
 
     #Numero de paneles por tipo de panel e inversor
@@ -284,6 +284,10 @@ def create_model(data_model):
     def PV_num_rule2(m,tpv, tch):
         return m.Xpv[tpv,tch] <= m.Xpvs[tpv, tch]*np.floor(m.ConH['Vdc_max_in',tch]/m.PVtype['Voc_max',tpv])
     model.PV_num_rule2=Constraint(model.PVT, model.CH, rule=PV_num_rule2)
+
+    def PV_num_rule3(m, tch):
+        return sum(m.Xpv[tpv,tch]*m.PVtype['P_stc',tpv]/1000 for tpv in m.PVT) <= sum(m.XCh[tpv,tb,tch] for tb in m.BATT for tpv in m.PVT)*m.ConH['P_max_pv',tch]
+    model.PV_num_rule3=Constraint(model.CH, rule=PV_num_rule3)
     #----------------------------------------------------------------------#
 
     #----------------------------------------------------------------------#
