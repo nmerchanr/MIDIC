@@ -97,6 +97,8 @@ if menu_select == menu_options[0]:
         df_index = date_vec(df.Year.values,df.Month.values,df.Day.values, df.Hour.values, df.Minute.values, tzinfo=None)
         df.index = df_index
 
+        
+
         df_meteo = pd.DataFrame(data={'Irra_year':df.GHI.values, 'Temperatura':df.Temperature.values, 'vel (m/s)':df['Wind Speed'].values}, index=df_index)
         df_meteo.index.name = 'Fecha'
         
@@ -811,6 +813,7 @@ if menu_select == menu_options[0]:
 
                 data_model["pv_modules"]["Pmpp"], df_irr = power_PV_calculation(df, data_model["pv_modules"]["type"], azimut, inclinacion,data_model["lat"])    
                 data_model["pv_modules"]["Pmpp"].index.name = "Fecha"
+                
                 with st.expander("Desplegar cálculos de los módulos"):
                     
                     st.write("En esta sección podrás observar la potencia generada por el módulo fotovoltaico seleccionado y su respectiva eficiencia a lo largo del año bajo estudio.")
@@ -880,7 +883,7 @@ if menu_select == menu_options[0]:
             data_model["windgen"]["type"] = extract_table(WindGens, grid_response_WT)    
             Profiles, Wind_generation = calculate_WT_power(df, data_model["windgen"]["type"], z0, height_wt, info['Elevation'].iloc[0])               
             data_model["windgen"]["generation"] = Wind_generation 
-
+            
             with st.expander("Curva de generación y producción anual"):
                 fig_choice_wind = st.selectbox("Generador eólico a visualizar", data_model["windgen"]["type"].columns)
                 st.subheader("Producción por hora del aerogenerador " + fig_choice_wind)
