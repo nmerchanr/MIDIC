@@ -247,7 +247,10 @@ def createfig_heatmap(df, col, fechas, binary, units):
     else:
         color = alt.Color(col + ':Q', title=units)
 
-    fig = alt.Chart(df_fig).mark_rect().encode(x=alt.X('day_of_year:O', title='Día del año', axis=alt.Axis(values=np.arange(0,366,25), labelAngle=0)), y=alt.Y('Hora:O', title='Hora'), color=color, tooltip='tooltip:N')
+    fig = alt.Chart(df_fig).mark_rect().encode(x=alt.X('day_of_year:O', title='Día del año', axis=alt.Axis(values=np.arange(0,366,25), labelAngle=0)), y=alt.Y('Hora:O', title='Hora'), color=color, tooltip='tooltip:N').configure_axis(
+        labelFontSize=22,
+        titleFontSize=22
+    )
     
     return fig
 
@@ -406,36 +409,40 @@ def results_economic(m, data_model):
     data["Renv"] = sum(m.EnvC*sum(sum(m.Xpv[tpv,tch].value*m.P_mpp[t,tpv] for tpv in m.PVT) - m.PpvCur[tch,t].value for tch in m.CH) +
                        m.EnvC*(sum(m.XT[tt].value*m.WT_gen[t,tt] for tt in m.WT) - m.PTCur[t].value) for t in m.T)*data_model["usd_to_results"]
     
-    data["Re"] = (sum(m.Ppvusd[t]*(sum(m.PpvG[tch,t].value for tch in m.CH) + m.PTG[t].value) for t in m.T))*data_model["usd_to_results"] 
+    data["Re"] = (sum(m.Ppvusd[t]*(sum(m.ConH['n_dcac',tch]*m.PpvG[tch,t].value for tch in m.CH) + m.PTG[t].value) for t in m.T))*data_model["usd_to_results"] 
 
     data["Ry"] = data["Re"] + data["Renv"]
 
     data["Ay"] = (sum(m.Price_Grid[t]*(sum(m.PBL[tch,tb,t].value for tb in m.BATT for tch in m.CH) + sum(m.ConH['n_dcac',tch]*m.PpvL[tch,t].value for tch in m.CH)) + m.PTL[t].value for t in m.T))*data_model["usd_to_results"]
-    #data["Ay"] = (sum(m.Price_Grid[t]*(sum(m.ConH['n_dcac',tch]*m.PpvL[tch,t].value for tch in m.CH)) + m.PTL[t].value for t in m.T))*data_model["usd_to_results"]
-
-    data["Cg"] = (sum(m.Price_Grid[t]*(m.PGL[t].value + sum(m.PGB[tch,tb,t].value for tb in m.BATT for tch in m.CH)) + m.FuelCost*(m.GenFmin*m.GenOn[t].value + m.GenFm*m.PD[t].value) for t in m.T))*data_model["usd_to_results"]
+    
+    data["Cg"] = (sum(m.Price_Grid[t]*(m.PGL[t].value + sum(m.PGB[tch,tb,t].value for tb in m.BATT for tch in m.CH)) for t in m.T))*data_model["usd_to_results"]
 
     data["Cd"] = (sum(m.FuelCost*(m.GenFmin*m.GenOn[t].value + m.GenFm*m.PD[t].value) for t in m.T))*data_model["usd_to_results"]
 
     data["Cens"] = (sum(m.Price_ENS[t]*m.ENS[t].value for t in m.T))*data_model["usd_to_results"]
 
-    data["Cq"] = sum(m.Price_Q[t]*m.QGe[t].value for t in m.T)*data_model["usd_to_results"]
-
+    #data["Cq"] = sum(m.Price_Q[t]*m.QGe[t].value for t in m.T)*data_model["usd_to_results"]
+    data["Cq"] = 0
     data["Cy"] = data["Cd"] + data["Cens"] + data["Cq"]
 
     
 
     VPN__F = np.array(VPN_F)
+    VPN_FS = np.sum(VPN__F)
 
-    VPN_cash_flow = pd.DataFrame(index = np.arange(0,data_model["lifeyears"]+1), columns = ["Cap. inicial", "COM", "Recaudos anuales", "Ahorros anuales", "Costos anuales", "Remplazo baterías","Remplazo inversores", "Reemplazo WT"]).fillna(0)
+    
+    VPN_cash_flow = pd.DataFrame(index = np.arange(0,data_model["lifeyears"]+1), columns = ["Cap. inicial", "COM", "Recaudos red", "Recaudos ambientales", "Costos red", "Costos combustible", "Costos ENS", "Ahorros anuales", "Remplazo baterías","Remplazo inversores", "Reemplazo WT"]).fillna(0)
     VPN_cash_flow.index.name = 'Año'
 
     VPN_cash_flow.loc[0,"Cap. inicial"] = -np.round(data["Capin"], 1)
     VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"COM"] = -np.round(VPN__F*data["COM"], 1)
-    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Recaudos anuales"] = np.round(VPN__F*data["Ry"], 1)
-    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Ahorros anuales"] = np.round(VPN__F*data["Ay"], 1)    
-    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Costos anuales"] = -np.round(VPN__F*data["Cy"], 1)
-    
+    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Recaudos red"] = np.round(VPN__F*data["Re"], 1)
+    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Ahorros anuales"] = np.round(VPN__F*data["Ay"], 1)
+    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Costos red"] = -np.round(VPN__F*data["Cg"], 1)    
+    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Costos combustible"] = -np.round(VPN__F*data["Cd"], 1)
+    VPN_cash_flow.loc[1:data_model["lifeyears"]+1,"Costos ENS"] = -np.round(VPN__F*data["Cens"], 1)
+
+      
 
     for tch in m.CH:
         for i in np.arange(int(m.ConH['ty',tch]),data_model["lifeyears"],int(m.ConH['ty',tch])):
@@ -449,6 +456,15 @@ def results_economic(m, data_model):
         for i in np.arange(int(m.Windtype['ty',tt]),data_model["lifeyears"],int(m.Windtype['ty',tt])):
             VPN_cash_flow.loc[i,"Reemplazo WT"] -= round(VPN_F[i-1]*m.Windtype['C_inst',tt]*m.XT[tt].value*data_model["usd_to_results"], 1)
 
+    CPN_flow = VPN_cash_flow.copy()
+    CPN_flow.drop(['Ahorros anuales'], axis=1, inplace=True)
+    CPN_flow["Total"] = CPN_flow.sum(axis = 1).to_numpy()
+    CPN_flow.loc["Total"] = CPN_flow.sum(axis = 0).to_numpy()
+    CPN_flow.columns.name = CPN_flow.index.name
+    CPN_flow.index.name = None
+
+
+    VPN_cash_flow.drop(['Costos red'], axis=1, inplace=True)  
     Nom_flow = VPN_cash_flow.copy()
     Nom_flow.iloc[1:,:] = Nom_flow.iloc[1:,:].apply(lambda x: x/VPN_F)
     Nom_flow["Total"] = Nom_flow.sum(axis = 1).to_numpy()
@@ -464,7 +480,7 @@ def results_economic(m, data_model):
 
     LCOE = NPC/(sum(m.Carga[t] - m.ENS[t].value + sum(m.PpvG[tch,t].value for tch in m.CH) + m.PTG[t].value for t in m.T)*np.sum(VPN__F))
 
-    return data, VPN_cash_flow, Nom_flow, LCOE, NPC
+    return data, VPN_cash_flow, Nom_flow, CPN_flow, LCOE, NPC
 
 def createline_echart(df, x_col, y_col, y_name, xlabel, ylabel, color, x_date = False, x_type = None, data_zoom = True):
     

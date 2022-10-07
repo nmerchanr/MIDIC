@@ -171,6 +171,7 @@ if menu_select == menu_options[0]:
             st.error("Error con el servidor de divisas. Solo es posible crear el modelo en dolares")
             currency_data = "USD"
             data_model["in_data_to_usd"] = 1
+            data_model["cop_to_usd"] = 1/4100
             
 
         
@@ -947,7 +948,7 @@ if menu_select == menu_options[0]:
 
                     st.dataframe(av_gen_metric)
 
-                    st.subheader("Disponibilidad de la red por hora y día del año")
+                    st.subheader("Disponibilidad del generador por hora y día del año")
                     st.altair_chart(createfig_heatmap(av_gen, av_gen_col, fechas, True, "[1,0]").interactive(), use_container_width=True)
 
             else: 
@@ -1124,7 +1125,7 @@ elif menu_select == menu_options[1]:
         st.markdown("""<hr style="height:5px;border-radius:5px;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
         if visualizar_op == "Análisis económico":
-            res_ec, vpn_tab, nom_tab, LCOE, NPC = results_economic(model, data_model)
+            res_ec, vpn_tab, nom_tab, cpn_tab, LCOE, NPC = results_economic(model, data_model)
 
             vpn = vpn_tab.iloc[-1,-1]            
 
@@ -1184,9 +1185,10 @@ elif menu_select == menu_options[1]:
             
             st.plotly_chart(fig, use_container_width=True)
 
-            st.header("Tabla de amortización VPN")
-            
+            st.header("Tabla de amortización CPN")
+            st.write(cpn_tab.to_html(justify = "center"), unsafe_allow_html=True)
 
+            st.header("Tabla de amortización VPN")
             st.write(vpn_tab.to_html(justify = "center"), unsafe_allow_html=True)
             
            

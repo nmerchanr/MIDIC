@@ -430,7 +430,7 @@ def create_model(data_model):
                 + sum(sum(VPN_F[ii-1]*m.Windtype['C_inst',tt]*m.XT[tt] for ii in np.arange(int(m.Windtype['ty',tt]),m.lifeyears,int(m.Windtype['ty',tt]))) for tt in m.WT) \
                 + VPN_FS*sum(m.Price_Grid[t]*(m.PGL[t] + sum(m.PGB[tch,tb,t] for tb in m.BATT for tch in m.CH))  +
                              m.FuelCost*(m.GenFmin*m.GenOn[t] + m.GenFm*m.PD[t]) + m.GenOMCost*m.GenOn[t] +
-                             m.Price_ENS[t]*m.ENS[t] - m.Ppvusd[t]*(sum(m.PpvG[tch,t] for tch in m.CH) + m.PTG[t]) -
+                             m.Price_ENS[t]*m.ENS[t] - m.Ppvusd[t]*(sum(m.ConH['n_dcac',tch]*m.PpvG[tch,t] for tch in m.CH) + m.PTG[t]) -
                              m.EnvC*sum(sum(m.Xpv[tpv,tch]*m.P_mpp[t,tpv] for tpv in m.PVT) - m.PpvCur[tch,t] for tch in m.CH) -
                              m.EnvC*(sum(m.XT[tt]*m.WT_gen[t,tt] for tt in m.WT) - m.PTCur[t]) + m.Price_Q[t]*(m.QGe[t]) for t in m.T)
                 
